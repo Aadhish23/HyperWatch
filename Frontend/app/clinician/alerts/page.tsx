@@ -1,6 +1,6 @@
 "use client"
 
-import { DashboardShell } from "@/components/dashboard-shell"
+import { FixedSidebarLayout } from "@/components/fixed-sidebar-layout"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -52,7 +52,7 @@ const mlAlerts = [
 
 export default function ClinicianAlertsPage() {
   return (
-    <DashboardShell role="clinician">
+    <FixedSidebarLayout role="clinician">
       <div className="p-6 space-y-6">
         <div>
           <h1 className="text-3xl font-bold">Alerts & Risk Assessment</h1>
@@ -230,6 +230,7 @@ export default function ClinicianAlertsPage() {
           </CardContent>
         </Card>
       </div>
-    </DashboardShell>
+    </FixedSidebarLayout>
   )
 }
+

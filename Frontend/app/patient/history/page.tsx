@@ -1,6 +1,6 @@
 "use client"
 
-import { DashboardShell } from "@/components/dashboard-shell"
+import { FixedSidebarLayout } from "@/components/fixed-sidebar-layout"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { TrendingUp, TrendingDown } from "lucide-react"
@@ -18,7 +18,7 @@ const weeklyData = [
 
 export default function HistoryPage() {
   return (
-    <DashboardShell role="patient">
+    <FixedSidebarLayout role="patient">
       <div className="p-6 space-y-6">
         <div className="flex items-center justify-between">
           <div>
@@ -172,6 +172,7 @@ export default function HistoryPage() {
           </CardContent>
         </Card>
       </div>
-    </DashboardShell>
+    </FixedSidebarLayout>
   )
 }
+

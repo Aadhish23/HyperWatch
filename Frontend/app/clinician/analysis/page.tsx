@@ -1,270 +1,455 @@
 "use client"
 
-import { DashboardShell } from "@/components/dashboard-shell"
+import { useEffect, useMemo, useState } from "react"
+import { useRouter, useSearchParams } from "next/navigation"
+import { FixedSidebarLayout } from "@/components/fixed-sidebar-layout"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { TrendingUp } from "lucide-react"
-import { Area, AreaChart, Bar, BarChart, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts"
+import { AlertCircle, Clock, RefreshCcw, TrendingUp } from "lucide-react"
+import { Area, AreaChart, ResponsiveContainer, Tooltip, XAxis, YAxis, LineChart, Line } from "recharts"
 
-const longTermData = [
-  { month: "Jan", sys: 125, dia: 82, confidence: 92 },
-  { month: "Feb", sys: 128, dia: 84, confidence: 94 },
-  { month: "Mar", sys: 132, dia: 87, confidence: 91 },
-  { month: "Apr", sys: 138, dia: 90, confidence: 93 },
-  { month: "May", sys: 142, dia: 93, confidence: 95 },
-  { month: "Jun", sys: 145, dia: 95, confidence: 94 },
+type PatientOverview = {
+  id: string
+  full_name: string
+  email: string
+  systolic_bp?: number
+  diastolic_bp?: number
+  heart_rate?: number
+  oxygen_saturation?: number
+  temperature?: number
+  last_measurement_at?: string
+  is_anomaly?: boolean
+}
+
+type VitalsResponse = {
+  id: string
+  patient_id: string
+  heart_rate?: number
+  systolic_bp?: number
+  diastolic_bp?: number
+  oxygen_saturation?: number
+  temperature?: number
+  respiratory_rate?: number
+  measurement_type: string
+  is_anomaly: boolean
+  anomaly_type?: string
+  measured_at: string
+  created_at: string
+}
+
+const MOCK_PATIENTS: PatientOverview[] = [
+  {
+    id: "mock-1",
+    full_name: "Michael Chen",
+    email: "michael.chen@example.com",
+    systolic_bp: 136,
+    diastolic_bp: 88,
+    heart_rate: 78,
+    oxygen_saturation: 97,
+    temperature: 36.9,
+    last_measurement_at: new Date().toISOString(),
+    is_anomaly: true,
+  },
+  {
+    id: "mock-2",
+    full_name: "Sarah Johnson",
+    email: "sarah.johnson@example.com",
+    systolic_bp: 124,
+    diastolic_bp: 79,
+    heart_rate: 72,
+    oxygen_saturation: 98,
+    temperature: 36.6,
+    last_measurement_at: new Date(Date.now() - 1000 * 60 * 45).toISOString(),
+    is_anomaly: false,
+  },
 ]
 
-const ppgData = Array.from({ length: 100 }, (_, i) => ({
-  x: i,
-  value: Math.sin(i * 0.2) * 30 + 50 + Math.random() * 10,
-}))
-
-const motionData = [
-  { hour: "00:00", rest: 45, active: 5 },
-  { hour: "04:00", rest: 48, active: 2 },
-  { hour: "08:00", rest: 35, active: 15 },
-  { hour: "12:00", rest: 30, active: 20 },
-  { hour: "16:00", rest: 32, active: 18 },
-  { hour: "20:00", rest: 40, active: 10 },
-]
+const MOCK_HISTORY: VitalsResponse[] = Array.from({ length: 12 }, (_, idx) => {
+  const ts = Date.now() - idx * 60 * 60 * 1000
+  return {
+    id: `mock-vital-${idx}`,
+    patient_id: "mock-1",
+    heart_rate: 70 + (idx % 4),
+    systolic_bp: 132 + (idx % 3),
+    diastolic_bp: 86 + (idx % 2),
+    oxygen_saturation: 97,
+    temperature: 36.7,
+    respiratory_rate: 16,
+    measurement_type: "device",
+    is_anomaly: idx === 2,
+    anomaly_type: idx === 2 ? "bp_high" : undefined,
+    measured_at: new Date(ts).toISOString(),
+    created_at: new Date(ts).toISOString(),
+  }
+})
 
 export default function AnalysisPage() {
+  const router = useRouter()
+  const searchParams = useSearchParams()
+
+  const [patients, setPatients] = useState<PatientOverview[]>([])
+  const [selectedPatientId, setSelectedPatientId] = useState<string | null>(null)
+  const [liveVitals, setLiveVitals] = useState<VitalsResponse | null>(null)
+  const [history, setHistory] = useState<VitalsResponse[]>([])
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState("")
+
+  const loadPatients = async () => {
+    try {
+      const token = localStorage.getItem("token")
+
+      const res = token
+        ? await fetch("http://localhost:8000/users/patients/overview", {
+            headers: { Authorization: `Bearer ${token}` },
+          })
+        : null
+
+      const data = res && res.ok ? ((await res.json()) as PatientOverview[]) : MOCK_PATIENTS
+      setPatients(data)
+
+      const patientIdFromUrl = searchParams.get("patientId")
+      if (patientIdFromUrl) {
+        setSelectedPatientId(patientIdFromUrl)
+      } else if (data.length) {
+        setSelectedPatientId(data[0].id)
+        router.replace(`/clinician/analysis?patientId=${data[0].id}`)
+      }
+    } catch (err: any) {
+      setError(err.message || "Unable to load patients. Showing sample data.")
+      setPatients(MOCK_PATIENTS)
+      if (MOCK_PATIENTS.length) {
+        setSelectedPatientId(MOCK_PATIENTS[0].id)
+        router.replace(`/clinician/analysis?patientId=${MOCK_PATIENTS[0].id}`)
+      }
+    }
+  }
+
+  const loadVitals = async (patientId: string) => {
+    try {
+      const token = localStorage.getItem("token")
+
+      setLoading(true)
+      setError("")
+
+      if (token) {
+        const [liveRes, historyRes] = await Promise.all([
+          fetch(`http://localhost:8000/vitals/live?patient_id=${patientId}`, {
+            headers: { Authorization: `Bearer ${token}` },
+          }),
+          fetch(`http://localhost:8000/vitals/history?patient_id=${patientId}&hours=24&limit=100`, {
+            headers: { Authorization: `Bearer ${token}` },
+          }),
+        ])
+
+        if (!liveRes.ok) {
+          const data = await liveRes.json().catch(() => ({}))
+          throw new Error(data.detail || "Failed to load latest vitals")
+        }
+        if (!historyRes.ok) {
+          const data = await historyRes.json().catch(() => ({}))
+          throw new Error(data.detail || "Failed to load vitals history")
+        }
+
+        const liveData = (await liveRes.json()) as VitalsResponse
+        const historyData = (await historyRes.json()) as VitalsResponse[]
+
+        setLiveVitals(liveData)
+        setHistory(historyData)
+      } else {
+        // Mock fallback for UI when not authenticated
+        setLiveVitals(MOCK_HISTORY[0])
+        setHistory(MOCK_HISTORY)
+      }
+    } catch (err: any) {
+      setError(err.message || "Unable to load vitals. Showing sample data.")
+      setLiveVitals(MOCK_HISTORY[0])
+      setHistory(MOCK_HISTORY)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    loadPatients()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  useEffect(() => {
+    const patientIdFromUrl = searchParams.get("patientId")
+    if (patientIdFromUrl) {
+      setSelectedPatientId(patientIdFromUrl)
+      loadVitals(patientIdFromUrl)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams])
+
+  const selectedPatient = useMemo(
+    () => patients.find((p) => p.id === selectedPatientId) || null,
+    [patients, selectedPatientId]
+  )
+
+  const bpTrendData = useMemo(() => {
+    return history
+      .filter((v) => v.systolic_bp && v.diastolic_bp)
+      .map((v) => ({
+        time: new Date(v.measured_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+        sys: v.systolic_bp,
+        dia: v.diastolic_bp,
+      }))
+      .reverse()
+  }, [history])
+
+  const bpStats = useMemo(() => {
+    const readings = history.filter((v) => v.systolic_bp && v.diastolic_bp)
+    if (!readings.length) return null
+    const totals = readings.reduce(
+      (acc, curr) => {
+        acc.sys += curr.systolic_bp || 0
+        acc.dia += curr.diastolic_bp || 0
+        return acc
+      },
+      { sys: 0, dia: 0 }
+    )
+    return {
+      averageSys: Math.round(totals.sys / readings.length),
+      averageDia: Math.round(totals.dia / readings.length),
+      count: readings.length,
+    }
+  }, [history])
+
+  const handlePatientChange = (patientId: string) => {
+    setSelectedPatientId(patientId)
+    router.push(`/clinician/analysis?patientId=${patientId}`)
+  }
+
+  const lastReadingTime = selectedPatient?.last_measurement_at || liveVitals?.measured_at
+
   return (
-    <DashboardShell role="clinician">
+    <FixedSidebarLayout role="clinician">
       <div className="p-6 space-y-6">
-        {/* Header */}
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-3xl font-bold">Patient Analysis</h1>
-            <p className="text-muted-foreground mt-1">Comprehensive data visualization and insights</p>
+            <p className="text-muted-foreground mt-1">View real-time vitals and trends per patient.</p>
           </div>
           <div className="flex gap-2">
-            <Button variant="outline">Michael Chen</Button>
-            <Button variant="outline">6 Months</Button>
+            <select
+              className="h-10 rounded-lg border border-input bg-background px-3 text-sm"
+              value={selectedPatientId || ""}
+              onChange={(e) => handlePatientChange(e.target.value)}
+            >
+              {!selectedPatientId && <option value="">Select a patient</option>}
+              {patients.map((patient) => (
+                <option key={patient.id} value={patient.id}>
+                  {patient.full_name}
+                </option>
+              ))}
+            </select>
+            <Button variant="outline" onClick={() => selectedPatientId && loadVitals(selectedPatientId)} disabled={!selectedPatientId || loading}>
+              <RefreshCcw className="h-4 w-4 mr-2" />
+              Refresh
+            </Button>
           </div>
         </div>
 
-        {/* Key Metrics */}
-        <div className="grid md:grid-cols-4 gap-4">
+        {error && (
+          <div className="flex items-center gap-2 rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3 text-destructive">
+            <AlertCircle className="h-4 w-4" />
+            <span className="text-sm">{error}</span>
+          </div>
+        )}
+
+        {!selectedPatientId && (
           <Card className="border-0 shadow-sm">
-            <CardHeader className="pb-2">
-              <CardDescription>Average BP (6mo)</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">135/88</div>
-              <div className="flex items-center gap-1 text-sm text-destructive mt-1">
-                <TrendingUp className="w-4 h-4" />
-                <span>+8% increase</span>
-              </div>
+            <CardContent className="p-6 text-muted-foreground">
+              Select a patient from the dropdown (or Patients tab) to load their analysis.
             </CardContent>
           </Card>
+        )}
 
-          <Card className="border-0 shadow-sm">
-            <CardHeader className="pb-2">
-              <CardDescription>Confidence Score</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">93%</div>
-              <p className="text-sm text-green-600 mt-1">Excellent reliability</p>
-            </CardContent>
-          </Card>
+        {selectedPatientId && (
+          <>
+            <div className="grid md:grid-cols-4 gap-4">
+              <Card className="border-0 shadow-sm">
+                <CardHeader className="pb-2">
+                  <CardDescription>Current BP</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">
+                    {liveVitals?.systolic_bp && liveVitals?.diastolic_bp
+                      ? `${liveVitals.systolic_bp}/${liveVitals.diastolic_bp} mmHg`
+                      : "—"}
+                  </div>
+                  <div className="flex items-center gap-1 text-sm text-muted-foreground mt-1">
+                    <Clock className="h-4 w-4" />
+                    <span>{lastReadingTime ? new Date(lastReadingTime).toLocaleString() : "No recent readings"}</span>
+                  </div>
+                </CardContent>
+              </Card>
 
-          <Card className="border-0 shadow-sm">
-            <CardHeader className="pb-2">
-              <CardDescription>Readings/Day</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">42</div>
-              <p className="text-sm text-muted-foreground mt-1">Average frequency</p>
-            </CardContent>
-          </Card>
+              <Card className="border-0 shadow-sm">
+                <CardHeader className="pb-2">
+                  <CardDescription>Heart Rate</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">{liveVitals?.heart_rate ? `${liveVitals.heart_rate} bpm` : "—"}</div>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    SpO2: {liveVitals?.oxygen_saturation ? `${liveVitals.oxygen_saturation}%` : "—"}
+                  </p>
+                </CardContent>
+              </Card>
 
-          <Card className="border-0 shadow-sm">
-            <CardHeader className="pb-2">
-              <CardDescription>Risk Assessment</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <Badge variant="destructive" className="text-base px-3 py-1">
-                High Risk
-              </Badge>
-              <p className="text-sm text-muted-foreground mt-1">Stage 2 Hypertension</p>
-            </CardContent>
-          </Card>
-        </div>
+              <Card className="border-0 shadow-sm">
+                <CardHeader className="pb-2">
+                  <CardDescription>Readings (24h)</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">{history.length}</div>
+                  <p className="text-sm text-muted-foreground mt-1">Last 24 hours</p>
+                </CardContent>
+              </Card>
 
-        {/* Long-term BP Trend */}
-        <Card className="border-0 shadow-sm">
-          <CardHeader>
-            <CardTitle>Long-term Blood Pressure Trend</CardTitle>
-            <CardDescription>6-month systolic and diastolic progression</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <ResponsiveContainer width="100%" height={350}>
-              <AreaChart data={longTermData}>
-                <defs>
-                  <linearGradient id="colorSys" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="hsl(var(--destructive))" stopOpacity={0.3} />
-                    <stop offset="95%" stopColor="hsl(var(--destructive))" stopOpacity={0} />
-                  </linearGradient>
-                  <linearGradient id="colorDia" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.3} />
-                    <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0} />
-                  </linearGradient>
-                </defs>
-                <XAxis dataKey="month" stroke="#888888" fontSize={12} />
-                <YAxis stroke="#888888" fontSize={12} />
-                <Tooltip
-                  contentStyle={{
-                    backgroundColor: "hsl(var(--card))",
-                    border: "1px solid hsl(var(--border))",
-                    borderRadius: "8px",
-                  }}
-                />
-                <Area
-                  type="monotone"
-                  dataKey="sys"
-                  stroke="hsl(var(--destructive))"
-                  strokeWidth={3}
-                  fill="url(#colorSys)"
-                />
-                <Area
-                  type="monotone"
-                  dataKey="dia"
-                  stroke="hsl(var(--primary))"
-                  strokeWidth={3}
-                  fill="url(#colorDia)"
-                />
-              </AreaChart>
-            </ResponsiveContainer>
-            <div className="flex items-center justify-center gap-6 mt-4">
-              <div className="flex items-center gap-2">
-                <div className="w-3 h-3 rounded-full bg-destructive" />
-                <span className="text-sm text-muted-foreground">Systolic BP</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <div className="w-3 h-3 rounded-full bg-primary" />
-                <span className="text-sm text-muted-foreground">Diastolic BP</span>
-              </div>
+              <Card className="border-0 shadow-sm">
+                <CardHeader className="pb-2">
+                  <CardDescription>Risk Status</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  {liveVitals?.is_anomaly || selectedPatient?.is_anomaly ? (
+                    <Badge variant="destructive" className="text-base px-3 py-1">
+                      Alert
+                    </Badge>
+                  ) : (
+                    <Badge variant="secondary" className="text-base px-3 py-1">
+                      Stable
+                    </Badge>
+                  )}
+                  <p className="text-sm text-muted-foreground mt-1">Based on last reading</p>
+                </CardContent>
+              </Card>
             </div>
-          </CardContent>
-        </Card>
 
-        <div className="grid lg:grid-cols-2 gap-6">
-          {/* Raw PPG Waveform */}
-          <Card className="border-0 shadow-sm">
-            <CardHeader>
-              <CardTitle>PPG Waveform Visualization</CardTitle>
-              <CardDescription>Raw photoplethysmography signal</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <ResponsiveContainer width="100%" height={250}>
-                <LineChart data={ppgData}>
-                  <XAxis hide />
-                  <YAxis hide />
-                  <Line type="monotone" dataKey="value" stroke="hsl(var(--primary))" strokeWidth={2} dot={false} />
-                </LineChart>
-              </ResponsiveContainer>
-              <div className="mt-4 p-3 bg-primary/5 rounded-lg">
-                <p className="text-sm text-muted-foreground">
-                  Signal quality: <span className="font-semibold text-foreground">Excellent</span> • Clean waveform with
-                  minimal artifacts
-                </p>
-              </div>
-            </CardContent>
-          </Card>
+            <Card className="border-0 shadow-sm">
+              <CardHeader>
+                <CardTitle>Blood Pressure Trend (24h)</CardTitle>
+                <CardDescription>Last 24h systolic/diastolic readings</CardDescription>
+              </CardHeader>
+              <CardContent>
+                {bpTrendData.length ? (
+                  <ResponsiveContainer width="100%" height={320}>
+                    <AreaChart data={bpTrendData}>
+                      <defs>
+                        <linearGradient id="bpSys" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="5%" stopColor="hsl(var(--destructive))" stopOpacity={0.25} />
+                          <stop offset="95%" stopColor="hsl(var(--destructive))" stopOpacity={0} />
+                        </linearGradient>
+                        <linearGradient id="bpDia" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.25} />
+                          <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0} />
+                        </linearGradient>
+                      </defs>
+                      <XAxis dataKey="time" stroke="#888888" fontSize={12} />
+                      <YAxis stroke="#888888" fontSize={12} />
+                      <Tooltip
+                        contentStyle={{
+                          backgroundColor: "hsl(var(--card))",
+                          border: "1px solid hsl(var(--border))",
+                          borderRadius: "8px",
+                        }}
+                      />
+                      <Area type="monotone" dataKey="sys" stroke="hsl(var(--destructive))" strokeWidth={3} fill="url(#bpSys)" />
+                      <Area type="monotone" dataKey="dia" stroke="hsl(var(--primary))" strokeWidth={3} fill="url(#bpDia)" />
+                    </AreaChart>
+                  </ResponsiveContainer>
+                ) : (
+                  <p className="text-sm text-muted-foreground">No blood pressure readings available.</p>
+                )}
+              </CardContent>
+            </Card>
 
-          {/* Confidence Score Trend */}
-          <Card className="border-0 shadow-sm">
-            <CardHeader>
-              <CardTitle>ML Confidence Score Trend</CardTitle>
-              <CardDescription>Model prediction reliability over time</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <ResponsiveContainer width="100%" height={250}>
-                <BarChart data={longTermData}>
-                  <XAxis dataKey="month" stroke="#888888" fontSize={12} />
-                  <YAxis domain={[85, 100]} stroke="#888888" fontSize={12} />
-                  <Tooltip
-                    contentStyle={{
-                      backgroundColor: "hsl(var(--card))",
-                      border: "1px solid hsl(var(--border))",
-                      borderRadius: "8px",
-                    }}
-                  />
-                  <Bar dataKey="confidence" fill="hsl(var(--primary))" radius={[8, 8, 0, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
-              <div className="mt-4 p-3 bg-green-50 rounded-lg border border-green-200">
-                <p className="text-sm text-muted-foreground">
-                  Average confidence: <span className="font-semibold text-foreground">93.2%</span> • Consistently high
-                  accuracy
-                </p>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
+            <div className="grid lg:grid-cols-2 gap-6">
+              <Card className="border-0 shadow-sm">
+                <CardHeader>
+                  <CardTitle>Heart Rate Trend</CardTitle>
+                  <CardDescription>Last 24h heart rate (bpm)</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  {history.filter((v) => v.heart_rate).length ? (
+                    <ResponsiveContainer width="100%" height={260}>
+                      <LineChart
+                        data={history
+                          .filter((v) => v.heart_rate)
+                          .map((v) => ({
+                            time: new Date(v.measured_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+                            hr: v.heart_rate,
+                          }))
+                          .reverse()}
+                      >
+                        <XAxis dataKey="time" stroke="#888888" fontSize={12} />
+                        <YAxis stroke="#888888" fontSize={12} />
+                        <Tooltip
+                          contentStyle={{
+                            backgroundColor: "hsl(var(--card))",
+                            border: "1px solid hsl(var(--border))",
+                            borderRadius: "8px",
+                          }}
+                        />
+                        <Line type="monotone" dataKey="hr" stroke="hsl(var(--primary))" strokeWidth={3} dot={false} />
+                      </LineChart>
+                    </ResponsiveContainer>
+                  ) : (
+                    <p className="text-sm text-muted-foreground">No heart rate readings available.</p>
+                  )}
+                </CardContent>
+              </Card>
 
-        {/* Rest vs Movement Comparison */}
-        <Card className="border-0 shadow-sm">
-          <CardHeader>
-            <CardTitle>Rest vs Movement Analysis</CardTitle>
-            <CardDescription>Reading distribution by activity level</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <ResponsiveContainer width="100%" height={300}>
-              <BarChart data={motionData}>
-                <XAxis dataKey="hour" stroke="#888888" fontSize={12} />
-                <YAxis stroke="#888888" fontSize={12} />
-                <Tooltip
-                  contentStyle={{
-                    backgroundColor: "hsl(var(--card))",
-                    border: "1px solid hsl(var(--border))",
-                    borderRadius: "8px",
-                  }}
-                />
-                <Bar dataKey="rest" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
-                <Bar dataKey="active" fill="hsl(var(--chart-3))" radius={[4, 4, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
-            <div className="flex items-center justify-center gap-6 mt-4">
-              <div className="flex items-center gap-2">
-                <div className="w-3 h-3 rounded-full bg-primary" />
-                <span className="text-sm text-muted-foreground">Resting Readings</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <div className="w-3 h-3 rounded-full bg-chart-3" />
-                <span className="text-sm text-muted-foreground">Active Readings</span>
-              </div>
+              <Card className="border-0 shadow-sm">
+                <CardHeader>
+                  <CardTitle>Summary</CardTitle>
+                  <CardDescription>Snapshot from latest readings</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-muted-foreground">Patient</span>
+                    <span className="font-semibold">{selectedPatient?.full_name || "—"}</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-muted-foreground">Email</span>
+                    <span className="font-semibold text-sm">{selectedPatient?.email || "—"}</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-muted-foreground">Last BP</span>
+                    <span className="font-semibold">
+                      {liveVitals?.systolic_bp && liveVitals?.diastolic_bp
+                        ? `${liveVitals.systolic_bp}/${liveVitals.diastolic_bp} mmHg`
+                        : "—"}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-muted-foreground">Last HR</span>
+                    <span className="font-semibold">{liveVitals?.heart_rate ? `${liveVitals.heart_rate} bpm` : "—"}</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-muted-foreground">SpO2</span>
+                    <span className="font-semibold">{liveVitals?.oxygen_saturation ? `${liveVitals.oxygen_saturation}%` : "—"}</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-muted-foreground">Readings (24h)</span>
+                    <span className="font-semibold">{history.length}</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-muted-foreground">Average BP</span>
+                    <span className="font-semibold">
+                      {bpStats ? `${bpStats.averageSys}/${bpStats.averageDia} mmHg` : "—"}
+                    </span>
+                  </div>
+                </CardContent>
+              </Card>
             </div>
-          </CardContent>
-        </Card>
-
-        {/* Clinical Notes */}
-        <Card className="border-0 shadow-sm">
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <CardTitle>Clinical Notes & Observations</CardTitle>
-              <Button>Add Note</Button>
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-3">
-              <div className="p-4 bg-secondary/30 rounded-lg">
-                <div className="flex items-center justify-between mb-2">
-                  <span className="font-semibold">Dr. Johnson</span>
-                  <span className="text-sm text-muted-foreground">2 days ago</span>
-                </div>
-                <p className="text-sm text-muted-foreground">
-                  Patient showing progressive BP elevation over past 3 months. Recommend medication adjustment and
-                  lifestyle counseling.
-                </p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+          </>
+        )}
       </div>
-    </DashboardShell>
+    </FixedSidebarLayout>
   )
 }
+

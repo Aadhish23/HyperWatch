@@ -1,6 +1,6 @@
 "use client"
 
-import { DashboardShell } from "@/components/dashboard-shell"
+import { FixedSidebarLayout } from "@/components/fixed-sidebar-layout"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -13,7 +13,7 @@ export default function CaregiverProfilePage() {
   const { user } = useAuth()
 
   return (
-    <DashboardShell role="caregiver">
+    <FixedSidebarLayout role="caregiver">
       <div className="p-6 space-y-6">
         <div>
           <h1 className="text-3xl font-bold">Profile & Settings</h1>
@@ -115,6 +115,7 @@ export default function CaregiverProfilePage() {
           </CardContent>
         </Card>
       </div>
-    </DashboardShell>
+    </FixedSidebarLayout>
   )
 }
+

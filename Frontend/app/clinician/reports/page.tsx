@@ -1,6 +1,6 @@
 "use client"
 
-import { DashboardShell } from "@/components/dashboard-shell"
+import { FixedSidebarLayout } from "@/components/fixed-sidebar-layout"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 
 export default function ReportsPage() {
   return (
-    <DashboardShell role="clinician">
+    <FixedSidebarLayout role="clinician">
       <div className="p-6 space-y-6">
         <div>
           <h1 className="text-3xl font-bold">Reports & Export</h1>
@@ -166,6 +166,7 @@ export default function ReportsPage() {
           </CardContent>
         </Card>
       </div>
-    </DashboardShell>
+    </FixedSidebarLayout>
   )
 }
+

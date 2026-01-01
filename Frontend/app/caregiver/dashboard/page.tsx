@@ -1,6 +1,6 @@
 "use client"
 
-import { DashboardShell } from "@/components/dashboard-shell"
+import { FixedSidebarLayout } from "@/components/fixed-sidebar-layout"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -62,7 +62,7 @@ const patients = [
 
 export default function CaregiverDashboard() {
   return (
-    <DashboardShell role="caregiver">
+    <FixedSidebarLayout role="caregiver">
       <div className="p-6 space-y-6">
         <div>
           <h1 className="text-3xl font-bold">Caregiver Dashboard</h1>
@@ -245,6 +245,7 @@ export default function CaregiverDashboard() {
           </Card>
         </div>
       </div>
-    </DashboardShell>
+    </FixedSidebarLayout>
   )
 }
+

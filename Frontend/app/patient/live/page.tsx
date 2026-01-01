@@ -1,6 +1,6 @@
 "use client"
 
-import { DashboardShell } from "@/components/dashboard-shell"
+import { FixedSidebarLayout } from "@/components/fixed-sidebar-layout"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Activity, Radio, AlertTriangle } from "lucide-react"
@@ -22,7 +22,7 @@ export default function LiveMonitoringPage() {
   }, [])
 
   return (
-    <DashboardShell role="patient">
+    <FixedSidebarLayout role="patient">
       <div className="p-6 space-y-6">
         <div>
           <h1 className="text-3xl font-bold">Live Monitoring</h1>
@@ -159,6 +159,7 @@ export default function LiveMonitoringPage() {
           </Card>
         </div>
       </div>
-    </DashboardShell>
+    </FixedSidebarLayout>
   )
 }
+
