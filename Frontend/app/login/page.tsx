@@ -31,8 +31,8 @@ export default function LoginPage() {
     setIsLoading(true)
     try {
       await login(email, password, selectedRole)
-    } catch (err) {
-      setError("Login failed. Please try again.")
+    } catch (err: any) {
+      setError(err.message || "Login failed. Please check your credentials and try again.")
     } finally {
       setIsLoading(false)
     }

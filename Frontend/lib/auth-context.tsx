@@ -1,6 +1,6 @@
 "use client"
 
-import { createContext, useContext, useState, useEffect, type ReactNode } from "react"
+import { createContext, useContext, useState, useEffect, useCallback, useMemo, type ReactNode } from "react"
 import { useRouter } from "next/navigation"
 
 export type UserRole = "patient" | "caregiver" | "clinician"
@@ -35,37 +35,60 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setIsLoading(false)
   }, [])
 
-  const login = async (email: string, password: string, role: UserRole) => {
-    // Simulate authentication
-    await new Promise((resolve) => setTimeout(resolve, 800))
+  const login = useCallback(async (email: string, password: string, role: UserRole) => {
+    try {
+      const response = await fetch("http://localhost:8000/auth/login", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ email, password }),
+      })
 
-    const user: User = {
-      id: Math.random().toString(36).substr(2, 9),
-      email,
-      name: email.split("@")[0],
-      role,
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(error.detail || "Login failed")
+      }
+
+      const data = await response.json()
+
+      const newUser: User = {
+        id: data.user_id,
+        email: data.email,
+        name: data.full_name || email.split("@")[0],
+        role: data.role,
+      }
+
+      setUser(newUser)
+      localStorage.setItem("hyperwatch_user", JSON.stringify(newUser))
+      localStorage.setItem("token", data.access_token)
+
+      // Redirect based on role
+      if (data.role === "patient") {
+        router.push("/patient/dashboard")
+      } else if (data.role === "caregiver") {
+        router.push("/caregiver/dashboard")
+      } else if (data.role === "clinician") {
+        router.push("/clinician/dashboard")
+      }
+    } catch (error) {
+      throw error
     }
+  }, [router])
 
-    setUser(user)
-    localStorage.setItem("hyperwatch_user", JSON.stringify(user))
-
-    // Redirect based on role
-    if (role === "patient") {
-      router.push("/patient/dashboard")
-    } else if (role === "caregiver") {
-      router.push("/caregiver/dashboard")
-    } else if (role === "clinician") {
-      router.push("/clinician/dashboard")
-    }
-  }
-
-  const logout = () => {
+  const logout = useCallback(() => {
     setUser(null)
     localStorage.removeItem("hyperwatch_user")
+    localStorage.removeItem("token")
     router.push("/login")
-  }
+  }, [router])
 
-  return <AuthContext.Provider value={{ user, login, logout, isLoading }}>{children}</AuthContext.Provider>
+  const contextValue = useMemo(
+    () => ({ user, login, logout, isLoading }),
+    [user, login, logout, isLoading],
+  )
+
+  return <AuthContext.Provider value={contextValue}>{children}</AuthContext.Provider>
 }
 
 export function useAuth() {

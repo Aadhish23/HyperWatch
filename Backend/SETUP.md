@@ -312,14 +312,12 @@ JWT_SECRET=your_generated_secret_here
 **For MongoDB Atlas:**
 1. Go to https://www.mongodb.com/cloud/atlas
 2. Create free account & cluster
-3. Get connection string (looks like):
-   ```
-   mongodb+srv://username:password@cluster.mongodb.net/hyperwatch
-   ```
+3. Get your connection string from Atlas.
 4. Update in `.env`:
    ```env
-   MONGO_URI=your_connection_string_here
+   MONGO_URI=<YOUR_ATLAS_CONNECTION_STRING>
    ```
+   (The Atlas string starts with `mongodb+srv://` and includes your cluster host and database name.)
 
 ### 3. FRONTEND_URL (for production)
 

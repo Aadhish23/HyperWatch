@@ -1,6 +1,7 @@
 "use client"
 
 import type { ReactNode } from "react"
+import { useMemo, memo, useCallback } from "react"
 import { useAuth, type UserRole } from "@/lib/auth-context"
 import { Button } from "@/components/ui/button"
 import {
@@ -28,36 +29,65 @@ interface DashboardShellProps {
   role: UserRole
 }
 
+const NavLink = memo(function NavLink({
+  href,
+  label,
+  icon: Icon,
+  isActive,
+}: {
+  href: string
+  label: string
+  icon: typeof Home
+  isActive: boolean
+}) {
+  return (
+    <Link
+      href={href}
+      className={cn(
+        "flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors",
+        isActive
+          ? "bg-primary text-primary-foreground"
+          : "text-muted-foreground hover:bg-accent hover:text-accent-foreground",
+      )}
+    >
+      <Icon className="w-5 h-5" />
+      {label}
+    </Link>
+  )
+})
+
 export function DashboardShell({ children, role }: DashboardShellProps) {
   const { user, logout } = useAuth()
   const pathname = usePathname()
   const router = useRouter()
 
-  const patientNav = [
-    { label: "Dashboard", href: "/patient/dashboard", icon: Home },
-    { label: "Live Monitoring", href: "/patient/live", icon: Activity },
-    { label: "History & Trends", href: "/patient/history", icon: TrendingUp },
-    { label: "Alerts", href: "/patient/alerts", icon: AlertCircle },
-    { label: "Calibration", href: "/patient/calibration", icon: Zap },
-    { label: "Profile & Device", href: "/patient/profile", icon: Settings },
-  ]
+  const navItems = useMemo(() => {
+    const patientNav = [
+      { label: "Dashboard", href: "/patient/dashboard", icon: Home },
+      { label: "Live Monitoring", href: "/patient/live", icon: Activity },
+      { label: "History & Trends", href: "/patient/history", icon: TrendingUp },
+      { label: "Alerts", href: "/patient/alerts", icon: AlertCircle },
+      { label: "Calibration", href: "/patient/calibration", icon: Zap },
+      { label: "Profile & Device", href: "/patient/profile", icon: Settings },
+    ]
 
-  const caregiverNav = [
-    { label: "Dashboard", href: "/caregiver/dashboard", icon: Home },
-    { label: "Patients", href: "/caregiver/patients", icon: Users },
-    { label: "Alerts", href: "/caregiver/alerts", icon: AlertCircle },
-    { label: "Profile", href: "/caregiver/profile", icon: Settings },
-  ]
+    const caregiverNav = [
+      { label: "Dashboard", href: "/caregiver/dashboard", icon: Home },
+      { label: "Patients", href: "/caregiver/patients", icon: Users },
+      { label: "Alerts", href: "/caregiver/alerts", icon: AlertCircle },
+      { label: "Profile", href: "/caregiver/profile", icon: Settings },
+    ]
 
-  const clinicianNav = [
-    { label: "Dashboard", href: "/clinician/dashboard", icon: Home },
-    { label: "Patient Analysis", href: "/clinician/analysis", icon: BarChart3 },
-    { label: "Reports & Export", href: "/clinician/reports", icon: FileText },
-    { label: "Alerts & Risk", href: "/clinician/alerts", icon: AlertCircle },
-    { label: "Model Transparency", href: "/clinician/model", icon: Stethoscope },
-  ]
+    const clinicianNav = [
+      { label: "Dashboard", href: "/clinician/dashboard", icon: Home },
+      { label: "Patient Analysis", href: "/clinician/analysis", icon: BarChart3 },
+      { label: "Reports & Export", href: "/clinician/reports", icon: FileText },
+      { label: "Alerts & Risk", href: "/clinician/alerts", icon: AlertCircle },
+      { label: "Model Transparency", href: "/clinician/model", icon: Stethoscope },
+    ]
 
-  const navItems = role === "patient" ? patientNav : role === "caregiver" ? caregiverNav : clinicianNav
+    return role === "patient" ? patientNav : role === "caregiver" ? caregiverNav : clinicianNav
+  }, [role])
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -112,25 +142,15 @@ export function DashboardShell({ children, role }: DashboardShellProps) {
         {/* Sidebar */}
         <aside className="w-64 border-r bg-card hidden lg:block">
           <nav className="p-4 space-y-1">
-            {navItems.map((item) => {
-              const Icon = item.icon
-              const isActive = pathname === item.href
-              return (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  className={cn(
-                    "flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors",
-                    isActive
-                      ? "bg-primary text-primary-foreground"
-                      : "text-muted-foreground hover:bg-accent hover:text-accent-foreground",
-                  )}
-                >
-                  <Icon className="w-5 h-5" />
-                  {item.label}
-                </Link>
-              )
-            })}
+            {navItems.map((item) => (
+              <NavLink
+                key={item.href}
+                href={item.href}
+                label={item.label}
+                icon={item.icon}
+                isActive={pathname === item.href}
+              />
+            ))}
           </nav>
         </aside>
 

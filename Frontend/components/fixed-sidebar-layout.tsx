@@ -1,6 +1,7 @@
 "use client"
 
 import type { ComponentType, ReactNode } from "react"
+import { useMemo, memo } from "react"
 import { useAuth, type UserRole } from "@/lib/auth-context"
 import { Button } from "@/components/ui/button"
 import {
@@ -29,48 +30,112 @@ interface FixedSidebarLayoutProps {
   role: UserRole
 }
 
+const PrimaryNavLink = memo(function PrimaryNavLink({
+  href,
+  label,
+  icon: Icon,
+  isActive,
+}: {
+  href: string
+  label: string
+  icon: ComponentType<any>
+  isActive: boolean
+}) {
+  return (
+    <Link
+      href={href}
+      className={cn(
+        "flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors",
+        isActive
+          ? "bg-primary text-primary-foreground"
+          : "text-muted-foreground hover:bg-accent hover:text-accent-foreground",
+      )}
+    >
+      <Icon className="h-5 w-5 shrink-0" />
+      <span className="truncate text-left">{label}</span>
+    </Link>
+  )
+})
+
+const SecondaryNavLink = memo(function SecondaryNavLink({
+  href,
+  label,
+  icon: Icon,
+  isActive,
+}: {
+  href: string
+  label: string
+  icon: ComponentType<any>
+  isActive: boolean
+}) {
+  return (
+    <Link
+      href={href}
+      className={cn(
+        "flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-semibold transition-colors border",
+        isActive
+          ? "bg-primary text-primary-foreground border-primary"
+          : "bg-primary/5 text-primary border-primary/40 hover:bg-primary/10",
+      )}
+    >
+      <Icon className={cn("h-5 w-5 shrink-0", isActive ? "text-primary-foreground" : "text-primary")} />
+      <span className="truncate text-left">{label}</span>
+    </Link>
+  )
+})
+
 export function FixedSidebarLayout({ children, role }: FixedSidebarLayoutProps) {
   const { user, logout } = useAuth()
   const pathname = usePathname()
 
-  const navConfig = {
-    patient: {
-      primary: [
-        { label: "Dashboard", href: "/patient/dashboard", icon: Home },
-        { label: "Live Monitoring", href: "/patient/live", icon: Activity },
-        { label: "History & Trends", href: "/patient/history", icon: TrendingUp },
-        { label: "Alerts", href: "/patient/alerts", icon: AlertCircle },
-        { label: "Calibration", href: "/patient/calibration", icon: Zap },
-        { label: "Profile & Device", href: "/patient/profile", icon: Settings },
-      ],
-      secondary: [],
-    },
-    caregiver: {
-      primary: [
-        { label: "Dashboard", href: "/caregiver/dashboard", icon: Home },
-        { label: "Patients", href: "/caregiver/patients", icon: Users },
-        { label: "Alerts", href: "/caregiver/alerts", icon: AlertCircle },
-        { label: "Profile", href: "/caregiver/profile", icon: Settings },
-      ],
-      secondary: [{ label: "Add Patient", href: "/caregiver/add-patient", icon: UserPlus }],
-    },
-    clinician: {
-      primary: [
-        { label: "Dashboard", href: "/clinician/dashboard", icon: Home },
-        { label: "Patients", href: "/clinician/patients", icon: Users },
-        { label: "Analytics", href: "/clinician/analysis", icon: BarChart3 },
-        { label: "Reports & Export", href: "/clinician/reports", icon: FileText },
-        { label: "Alerts & Risk", href: "/clinician/alerts", icon: AlertCircle },
-        { label: "Model Transparency", href: "/clinician/model", icon: Stethoscope },
-      ],
-      secondary: [{ label: "Add Patient", href: "/clinician/add-patient", icon: UserPlus }],
-    },
-  } satisfies Record<UserRole, { primary: { label: string; href: string; icon: ComponentType<any> }[]; secondary: { label: string; href: string; icon: ComponentType<any> }[] }>
+  const navConfig = useMemo(
+    () => ({
+      patient: {
+        primary: [
+          { label: "Dashboard", href: "/patient/dashboard", icon: Home },
+          { label: "Live Monitoring", href: "/patient/live", icon: Activity },
+          { label: "History & Trends", href: "/patient/history", icon: TrendingUp },
+          { label: "Alerts", href: "/patient/alerts", icon: AlertCircle },
+          { label: "Calibration", href: "/patient/calibration", icon: Zap },
+          { label: "Profile & Device", href: "/patient/profile", icon: Settings },
+        ],
+        secondary: [],
+      },
+      caregiver: {
+        primary: [
+          { label: "Dashboard", href: "/caregiver/dashboard", icon: Home },
+          { label: "Patients", href: "/caregiver/patients", icon: Users },
+          { label: "Alerts", href: "/caregiver/alerts", icon: AlertCircle },
+          { label: "Profile", href: "/caregiver/profile", icon: Settings },
+        ],
+        secondary: [{ label: "Add Patient", href: "/caregiver/add-patient", icon: UserPlus }],
+      },
+      clinician: {
+        primary: [
+          { label: "Dashboard", href: "/clinician/dashboard", icon: Home },
+          { label: "Patients", href: "/clinician/patients", icon: Users },
+          { label: "Analytics", href: "/clinician/analysis", icon: BarChart3 },
+          { label: "Reports & Export", href: "/clinician/reports", icon: FileText },
+          { label: "Alerts & Risk", href: "/clinician/alerts", icon: AlertCircle },
+          { label: "Model Transparency", href: "/clinician/model", icon: Stethoscope },
+        ],
+        secondary: [{ label: "Add Patient", href: "/clinician/add-patient", icon: UserPlus }],
+      },
+    }),
+    [],
+  ) satisfies Record<UserRole, { primary: { label: string; href: string; icon: ComponentType<any> }[]; secondary: { label: string; href: string; icon: ComponentType<any> }[] }>
 
   const navItems = role === "patient" ? navConfig.patient : role === "caregiver" ? navConfig.caregiver : navConfig.clinician
 
-  const activePrimaryPath = navItems.primary.find((item) => pathname.startsWith(item.href))?.href
-  const activeSecondaryPath = navItems.secondary.find((item) => pathname.startsWith(item.href))?.href
+  const activePrimaryPath = useMemo(
+    () => navItems.primary.find((item) => pathname.startsWith(item.href))?.href,
+    [pathname, navItems.primary],
+  )
+
+  const activeSecondaryPath = useMemo(
+    () => navItems.secondary.find((item) => pathname.startsWith(item.href))?.href,
+    [pathname, navItems.secondary],
+  )
 
   return (
     <div className="flex h-screen overflow-hidden">
@@ -89,49 +154,28 @@ export function FixedSidebarLayout({ children, role }: FixedSidebarLayoutProps) 
         {/* Navigation */}
         <nav className="flex-1 overflow-y-auto p-4 space-y-6">
           <div className="space-y-1">
-            {navItems.primary.map((item) => {
-              const Icon = item.icon
-              const isActive = item.href === activePrimaryPath
-              return (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  className={cn(
-                    "flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors",
-                    isActive
-                      ? "bg-primary text-primary-foreground"
-                      : "text-muted-foreground hover:bg-accent hover:text-accent-foreground",
-                  )}
-                >
-                  <Icon className="h-5 w-5 shrink-0" />
-                  <span className="truncate text-left">{item.label}</span>
-                </Link>
-              )
-            })}
+            {navItems.primary.map((item) => (
+              <PrimaryNavLink
+                key={item.href}
+                href={item.href}
+                label={item.label}
+                icon={item.icon}
+                isActive={item.href === activePrimaryPath}
+              />
+            ))}
           </div>
 
           {navItems.secondary.length > 0 && (
             <div className="space-y-2 pt-3 border-t border-border/60">
-              {navItems.secondary.map((item) => {
-                const Icon = item.icon
-                const isActive = item.href === activeSecondaryPath
-                return (
-                  <Link
-                    key={item.href}
-                    href={item.href}
-                    className={cn(
-                      "flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-semibold transition-colors border",
-                      isActive
-                        ? "bg-primary text-primary-foreground border-primary"
-                        : "bg-primary/5 text-primary border-primary/40 hover:bg-primary/10",
-                    )}
-                  >
-                    <Icon className={cn("h-5 w-5 shrink-0", isActive ? "text-primary-foreground" : "text-primary")}
-                    />
-                    <span className="truncate text-left">{item.label}</span>
-                  </Link>
-                )
-              })}
+              {navItems.secondary.map((item) => (
+                <SecondaryNavLink
+                  key={item.href}
+                  href={item.href}
+                  label={item.label}
+                  icon={item.icon}
+                  isActive={item.href === activeSecondaryPath}
+                />
+              ))}
             </div>
           )}
         </nav>
