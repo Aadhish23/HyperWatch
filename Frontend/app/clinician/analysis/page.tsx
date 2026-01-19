@@ -97,15 +97,8 @@ export default function AnalysisPage() {
 
   const loadPatients = async () => {
     try {
-      const token = localStorage.getItem("token")
-
-      const res = token
-        ? await fetch("http://localhost:8000/users/patients/overview", {
-            headers: { Authorization: `Bearer ${token}` },
-          })
-        : null
-
-      const data = res && res.ok ? ((await res.json()) as PatientOverview[]) : MOCK_PATIENTS
+      await new Promise((resolve) => setTimeout(resolve, 300))
+      const data = MOCK_PATIENTS
       setPatients(data)
 
       const patientIdFromUrl = searchParams.get("patientId")
@@ -127,40 +120,21 @@ export default function AnalysisPage() {
 
   const loadVitals = async (patientId: string) => {
     try {
-      const token = localStorage.getItem("token")
-
       setLoading(true)
       setError("")
 
-      if (token) {
-        const [liveRes, historyRes] = await Promise.all([
-          fetch(`http://localhost:8000/vitals/live?patient_id=${patientId}`, {
-            headers: { Authorization: `Bearer ${token}` },
-          }),
-          fetch(`http://localhost:8000/vitals/history?patient_id=${patientId}&hours=24&limit=100`, {
-            headers: { Authorization: `Bearer ${token}` },
-          }),
-        ])
+      await new Promise((resolve) => setTimeout(resolve, 300))
 
-        if (!liveRes.ok) {
-          const data = await liveRes.json().catch(() => ({}))
-          throw new Error(data.detail || "Failed to load latest vitals")
-        }
-        if (!historyRes.ok) {
-          const data = await historyRes.json().catch(() => ({}))
-          throw new Error(data.detail || "Failed to load vitals history")
-        }
+      const mockHistory = MOCK_HISTORY.map((item, idx) => ({
+        ...item,
+        id: `${patientId}-mock-${idx}`,
+        patient_id: patientId,
+        measured_at: new Date(Date.now() - idx * 60 * 60 * 1000).toISOString(),
+        created_at: new Date(Date.now() - idx * 60 * 60 * 1000).toISOString(),
+      }))
 
-        const liveData = (await liveRes.json()) as VitalsResponse
-        const historyData = (await historyRes.json()) as VitalsResponse[]
-
-        setLiveVitals(liveData)
-        setHistory(historyData)
-      } else {
-        // Mock fallback for UI when not authenticated
-        setLiveVitals(MOCK_HISTORY[0])
-        setHistory(MOCK_HISTORY)
-      }
+      setLiveVitals(mockHistory[0])
+      setHistory(mockHistory)
     } catch (err: any) {
       setError(err.message || "Unable to load vitals. Showing sample data.")
       setLiveVitals(MOCK_HISTORY[0])

@@ -1,162 +1,152 @@
 "use client"
 
-import type { ReactNode } from "react"
-import { useMemo, memo, useCallback } from "react"
-import { useAuth, type UserRole } from "@/lib/auth-context"
-import { Button } from "@/components/ui/button"
-import {
-  Activity,
-  Users,
-  Stethoscope,
-  BarChart3,
-  Bell,
-  Search,
-  User,
-  LogOut,
-  Home,
-  TrendingUp,
-  AlertCircle,
-  Settings,
-  FileText,
-  Zap,
-} from "lucide-react"
+import React from "react"
 import Link from "next/link"
-import { usePathname, useRouter } from "next/navigation"
-import { cn } from "@/lib/utils"
+import { useAuth } from "@/lib/auth-context"
+import { useRoleNavigation, getRoleDisplayName } from "@/lib/role-navigation"
+import { Button } from "@/components/ui/button"
+import { Heart, LogOut, Menu, X } from "lucide-react"
+import { useState } from "react"
 
 interface DashboardShellProps {
-  children: ReactNode
-  role: UserRole
+  children: React.ReactNode
+  title?: string
+  description?: string
 }
 
-const NavLink = memo(function NavLink({
-  href,
-  label,
-  icon: Icon,
-  isActive,
-}: {
-  href: string
-  label: string
-  icon: typeof Home
-  isActive: boolean
-}) {
-  return (
-    <Link
-      href={href}
-      className={cn(
-        "flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors",
-        isActive
-          ? "bg-primary text-primary-foreground"
-          : "text-muted-foreground hover:bg-accent hover:text-accent-foreground",
-      )}
-    >
-      <Icon className="w-5 h-5" />
-      {label}
-    </Link>
-  )
-})
-
-export function DashboardShell({ children, role }: DashboardShellProps) {
+/**
+ * Dashboard Shell Component
+ * Provides consistent layout with role-aware sidebar navigation
+ * Enforces UI visibility based on user role
+ * 
+ * RBAC: Only renders navigation items applicable to user's role
+ */
+export function DashboardShell({ children, title, description }: DashboardShellProps) {
   const { user, logout } = useAuth()
-  const pathname = usePathname()
-  const router = useRouter()
+  const navItems = useRoleNavigation(user?.role || null)
+  const [sidebarOpen, setSidebarOpen] = useState(true)
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
 
-  const navItems = useMemo(() => {
-    const patientNav = [
-      { label: "Dashboard", href: "/patient/dashboard", icon: Home },
-      { label: "Live Monitoring", href: "/patient/live", icon: Activity },
-      { label: "History & Trends", href: "/patient/history", icon: TrendingUp },
-      { label: "Alerts", href: "/patient/alerts", icon: AlertCircle },
-      { label: "Calibration", href: "/patient/calibration", icon: Zap },
-      { label: "Profile & Device", href: "/patient/profile", icon: Settings },
-    ]
+  // If no user, don't render (should be caught by layout)
+  if (!user) {
+    return <div>Loading...</div>
+  }
 
-    const caregiverNav = [
-      { label: "Dashboard", href: "/caregiver/dashboard", icon: Home },
-      { label: "Patients", href: "/caregiver/patients", icon: Users },
-      { label: "Alerts", href: "/caregiver/alerts", icon: AlertCircle },
-      { label: "Profile", href: "/caregiver/profile", icon: Settings },
-    ]
-
-    const clinicianNav = [
-      { label: "Dashboard", href: "/clinician/dashboard", icon: Home },
-      { label: "Patient Analysis", href: "/clinician/analysis", icon: BarChart3 },
-      { label: "Reports & Export", href: "/clinician/reports", icon: FileText },
-      { label: "Alerts & Risk", href: "/clinician/alerts", icon: AlertCircle },
-      { label: "Model Transparency", href: "/clinician/model", icon: Stethoscope },
-    ]
-
-    return role === "patient" ? patientNav : role === "caregiver" ? caregiverNav : clinicianNav
-  }, [role])
+  const currentRole = user.role
+  const roleName = getRoleDisplayName(currentRole)
 
   return (
-    <div className="min-h-screen flex flex-col">
-      {/* Top Navigation */}
-      <header className="sticky top-0 z-50 border-b bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/60">
-        <div className="flex h-16 items-center gap-4 px-6">
-          {/* Logo */}
-          <Link href={`/${role}/dashboard`} className="flex items-center gap-2 font-semibold">
-            <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center">
-              <Activity className="w-5 h-5 text-primary-foreground" />
+    <div className="min-h-screen bg-gray-50 flex">
+      {/* Desktop Sidebar */}
+      <aside
+        className={`${
+          sidebarOpen ? "w-64" : "w-20"
+        } bg-white border-r border-gray-200 transition-all duration-300 ease-in-out hidden md:flex flex-col`}
+      >
+        {/* Logo */}
+        <div className="p-4 border-b border-gray-200">
+          <Link href={`/${currentRole}/dashboard`} className="flex items-center gap-2">
+            <div className="bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg p-2">
+              <Heart className="w-5 h-5 text-white" />
             </div>
-            <span className="text-lg">HyperWatch</span>
+            {sidebarOpen && (
+              <div>
+                <h1 className="text-lg font-bold text-gray-900">HyperWatch</h1>
+                <p className="text-xs text-gray-500">{roleName}</p>
+              </div>
+            )}
           </Link>
-
-          <div className="flex-1" />
-
-          {/* Search (caregiver & clinician only) */}
-          {(role === "caregiver" || role === "clinician") && (
-            <div className="hidden md:flex items-center gap-2 bg-secondary/50 rounded-lg px-3 py-2 min-w-[200px]">
-              <Search className="w-4 h-4 text-muted-foreground" />
-              <input
-                type="text"
-                placeholder="Search patients..."
-                className="bg-transparent border-none outline-none text-sm flex-1"
-              />
-            </div>
-          )}
-
-          {/* Notifications */}
-          <Button variant="ghost" size="icon" className="relative">
-            <Bell className="w-5 h-5" />
-            <span className="absolute top-1 right-1 w-2 h-2 bg-destructive rounded-full" />
-          </Button>
-
-          {/* Profile Dropdown */}
-          <div className="flex items-center gap-3">
-            <div className="hidden md:block text-right">
-              <p className="text-sm font-medium">{user?.name}</p>
-              <p className="text-xs text-muted-foreground capitalize">{user?.role}</p>
-            </div>
-            <Button variant="ghost" size="icon">
-              <User className="w-5 h-5" />
-            </Button>
-            <Button variant="ghost" size="icon" onClick={logout}>
-              <LogOut className="w-5 h-5" />
-            </Button>
-          </div>
         </div>
-      </header>
 
-      <div className="flex flex-1">
-        {/* Sidebar */}
-        <aside className="w-64 border-r bg-card hidden lg:block">
-          <nav className="p-4 space-y-1">
+        {/* Navigation */}
+        <nav className="flex-1 p-4 space-y-2 overflow-y-auto">
+          {navItems.map((item) => (
+            <Link
+              key={item.href}
+              href={item.href}
+              className="flex items-center gap-3 px-3 py-2 rounded-lg text-gray-700 hover:bg-blue-50 hover:text-blue-700 transition-colors"
+              title={!sidebarOpen ? item.label : undefined}
+            >
+              <span className="flex-shrink-0">{item.icon}</span>
+              {sidebarOpen && <span className="text-sm font-medium">{item.label}</span>}
+            </Link>
+          ))}
+        </nav>
+
+        {/* Logout Button */}
+        <div className="p-4 border-t border-gray-200 space-y-2">
+          <button
+            onClick={logout}
+            className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-red-600 hover:bg-red-50 transition-colors"
+            title={!sidebarOpen ? "Logout" : undefined}
+          >
+            <LogOut className="w-4 h-4" />
+            {sidebarOpen && <span className="text-sm font-medium">Logout</span>}
+          </button>
+        </div>
+      </aside>
+
+      {/* Mobile Menu Button */}
+      <button
+        onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+        className="md:hidden fixed top-4 left-4 z-50 p-2 rounded-lg bg-white border border-gray-200"
+      >
+        {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+      </button>
+
+      {/* Mobile Sidebar */}
+      {mobileMenuOpen && (
+        <div className="md:hidden fixed inset-0 top-0 left-0 z-40 w-64 bg-white border-r border-gray-200 flex flex-col pt-16">
+          {/* Mobile Navigation */}
+          <nav className="flex-1 p-4 space-y-2">
             {navItems.map((item) => (
-              <NavLink
+              <Link
                 key={item.href}
                 href={item.href}
-                label={item.label}
-                icon={item.icon}
-                isActive={pathname === item.href}
-              />
+                onClick={() => setMobileMenuOpen(false)}
+                className="flex items-center gap-3 px-3 py-2 rounded-lg text-gray-700 hover:bg-blue-50 hover:text-blue-700 transition-colors"
+              >
+                <span>{item.icon}</span>
+                <span className="text-sm font-medium">{item.label}</span>
+              </Link>
             ))}
           </nav>
-        </aside>
 
-        {/* Main Content */}
-        <main className="flex-1 overflow-auto">{children}</main>
-      </div>
+          {/* Mobile Logout */}
+          <div className="p-4 border-t border-gray-200">
+            <button
+              onClick={() => {
+                setMobileMenuOpen(false)
+                logout()
+              }}
+              className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-red-600 hover:bg-red-50 transition-colors"
+            >
+              <LogOut className="w-4 h-4" />
+              <span className="text-sm font-medium">Logout</span>
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Main Content */}
+      <main className="flex-1 flex flex-col">
+        {/* Header */}
+        <header className="bg-white border-b border-gray-200 p-4 md:p-6 flex items-center justify-between">
+          <div>
+            {title && <h1 className="text-2xl md:text-3xl font-bold text-gray-900">{title}</h1>}
+            {description && <p className="text-gray-600 text-sm mt-1">{description}</p>}
+          </div>
+          <div className="text-right">
+            <p className="text-sm font-medium text-gray-900">{user.name}</p>
+            <p className="text-xs text-gray-500">{user.email}</p>
+          </div>
+        </header>
+
+        {/* Page Content */}
+        <div className="flex-1 p-4 md:p-6 overflow-auto">{children}</div>
+      </main>
     </div>
   )
 }
+
+export default DashboardShell

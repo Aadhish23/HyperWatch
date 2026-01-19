@@ -62,22 +62,8 @@ export default function ClinicianPatientsPage() {
 		setError("")
 
 		try {
-			const token = localStorage.getItem("token")
-
-			const res = token
-				? await fetch("http://localhost:8000/users/patients/overview", {
-						headers: {
-							Authorization: `Bearer ${token}`,
-						},
-					})
-				: null
-
-			if (res && res.ok) {
-				const data = (await res.json()) as PatientRow[]
-				setPatients(data)
-			} else {
-				setPatients(MOCK_PATIENTS)
-			}
+			await new Promise((resolve) => setTimeout(resolve, 300))
+			setPatients(MOCK_PATIENTS)
 		} catch (err: any) {
 			setError(err.message || "Unable to load patients. Showing sample data.")
 			setPatients(MOCK_PATIENTS)

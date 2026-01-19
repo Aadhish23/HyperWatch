@@ -6,7 +6,6 @@ import { Card } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Button } from "@/components/ui/button"
-import { Select } from "@/components/ui/select"
 import { UserPlus, AlertCircle, CheckCircle2 } from "lucide-react"
 
 export default function AddPatientPage() {
@@ -43,71 +42,26 @@ export default function AddPatientPage() {
     setTempPassword("")
 
     try {
-      const token = localStorage.getItem("token")
-      if (!token) {
-        throw new Error("No authentication token found")
-      }
+        await new Promise((resolve) => setTimeout(resolve, 400))
 
-      // Convert comma-separated strings to arrays
-      const allergies = formData.allergies ? formData.allergies.split(",").map((s) => s.trim()) : []
-      const medications = formData.medications ? formData.medications.split(",").map((s) => s.trim()) : []
-      const medical_conditions = formData.medical_conditions
-        ? formData.medical_conditions.split(",").map((s) => s.trim())
-        : []
+        const generatedPassword = `Temp-${Math.random().toString(36).slice(2, 8)}`
+        setTempPassword(generatedPassword)
+        setSuccess("Patient created successfully (mock)")
 
-      const requestBody = {
-        email: formData.email,
-        full_name: formData.full_name,
-        age: formData.age ? parseInt(formData.age) : undefined,
-        gender: formData.gender || undefined,
-        phone: formData.phone || undefined,
-        blood_type: formData.blood_type || undefined,
-        allergies: allergies.length > 0 ? allergies : undefined,
-        medications: medications.length > 0 ? medications : undefined,
-        medical_conditions: medical_conditions.length > 0 ? medical_conditions : undefined,
-        emergency_contact_name: formData.emergency_contact_name || undefined,
-        emergency_contact_phone: formData.emergency_contact_phone || undefined,
-        emergency_contact_relationship: formData.emergency_contact_relationship || undefined,
-      }
-
-      const response = await fetch("http://localhost:8000/users/patients", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify(requestBody),
-      })
-
-      const data = await response.json()
-
-      if (!response.ok) {
-        throw new Error(data.detail || "Failed to create patient")
-      }
-
-      setSuccess(`Patient created successfully! User ID: ${data.user_id}`)
-      
-      // Extract temporary password from message
-      const passwordMatch = data.message.match(/Temporary password: (.+)/)
-      if (passwordMatch) {
-        setTempPassword(passwordMatch[1])
-      }
-
-      // Reset form
-      setFormData({
-        email: "",
-        full_name: "",
-        age: "",
-        gender: "",
-        phone: "",
-        blood_type: "",
-        allergies: "",
-        medications: "",
-        medical_conditions: "",
-        emergency_contact_name: "",
-        emergency_contact_phone: "",
-        emergency_contact_relationship: "",
-      })
+        setFormData({
+          email: "",
+          full_name: "",
+          age: "",
+          gender: "",
+          phone: "",
+          blood_type: "",
+          allergies: "",
+          medications: "",
+          medical_conditions: "",
+          emergency_contact_name: "",
+          emergency_contact_phone: "",
+          emergency_contact_relationship: "",
+        })
     } catch (err: any) {
       setError(err.message || "An error occurred while creating the patient")
     } finally {

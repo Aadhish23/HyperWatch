@@ -17,6 +17,7 @@ interface AuthContextType {
   login: (email: string, password: string, role: UserRole) => Promise<void>
   logout: () => void
   isLoading: boolean
+  isAuthenticated: boolean
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
@@ -27,64 +28,65 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const router = useRouter()
 
   useEffect(() => {
-    // Check for stored user session
-    const storedUser = localStorage.getItem("hyperwatch_user")
-    if (storedUser) {
-      setUser(JSON.parse(storedUser))
+    const storedMock = localStorage.getItem("mockAuth") || localStorage.getItem("hyperwatch_user")
+    if (storedMock) {
+      try {
+        const parsed = JSON.parse(storedMock)
+        const restoredUser: User = {
+          id: parsed.id || "mock-user",
+          email: parsed.email,
+          name: parsed.name || parsed.email?.split("@")[0] || "User",
+          role: parsed.role,
+        }
+        setUser(restoredUser)
+      } catch (err) {
+        console.warn("Failed to parse stored auth", err)
+      }
     }
     setIsLoading(false)
   }, [])
 
-  const login = useCallback(async (email: string, password: string, role: UserRole) => {
-    try {
-      const response = await fetch("http://localhost:8000/auth/login", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ email, password }),
-      })
+  const login = useCallback(
+    async (email: string, password: string, role: UserRole) => {
+      setIsLoading(true)
+      try {
+        await new Promise((resolve) => setTimeout(resolve, 400))
 
-      if (!response.ok) {
-        const error = await response.json()
-        throw new Error(error.detail || "Login failed")
+        const newUser: User = {
+          id: `mock-${role}-${Date.now()}`,
+          email,
+          name: email.split("@")[0] || "User",
+          role,
+        }
+
+        const mockAuthData = { ...newUser, isAuthenticated: true }
+        localStorage.setItem("mockAuth", JSON.stringify(mockAuthData))
+        setUser(newUser)
+
+        const redirectMap: Record<UserRole, string> = {
+          patient: "/patient/dashboard",
+          caregiver: "/caregiver/dashboard",
+          clinician: "/clinician/dashboard",
+        }
+
+        router.push(redirectMap[role])
+      } finally {
+        setIsLoading(false)
       }
-
-      const data = await response.json()
-
-      const newUser: User = {
-        id: data.user_id,
-        email: data.email,
-        name: data.full_name || email.split("@")[0],
-        role: data.role,
-      }
-
-      setUser(newUser)
-      localStorage.setItem("hyperwatch_user", JSON.stringify(newUser))
-      localStorage.setItem("token", data.access_token)
-
-      // Redirect based on role
-      if (data.role === "patient") {
-        router.push("/patient/dashboard")
-      } else if (data.role === "caregiver") {
-        router.push("/caregiver/dashboard")
-      } else if (data.role === "clinician") {
-        router.push("/clinician/dashboard")
-      }
-    } catch (error) {
-      throw error
-    }
-  }, [router])
+    },
+    [router],
+  )
 
   const logout = useCallback(() => {
     setUser(null)
+    localStorage.removeItem("mockAuth")
     localStorage.removeItem("hyperwatch_user")
     localStorage.removeItem("token")
     router.push("/login")
   }, [router])
 
   const contextValue = useMemo(
-    () => ({ user, login, logout, isLoading }),
+    () => ({ user, login, logout, isLoading, isAuthenticated: !!user }),
     [user, login, logout, isLoading],
   )
 
