@@ -242,3 +242,65 @@ async def get_vitals_trends(
         ))
     
     return trends
+
+
+@router.post("/calibrate", response_model=dict, status_code=status.HTTP_200_OK)
+async def calibrate_device(
+    current_user: User = Depends(require_patient)
+):
+    """
+    Mark patient's device as calibrated (Patient only).
+    
+    - Updates device calibration status
+    - Records calibration timestamp
+    """
+    db = get_database()
+    
+    # Update patient's device calibration status
+    result = await db[PATIENTS_COLLECTION].update_one(
+        {"user_id": current_user.id},
+        {
+            "$set": {
+                "device_calibrated": True,
+                "last_calibration_date": datetime.utcnow(),
+                "updated_at": datetime.utcnow()
+            }
+        }
+    )
+    
+    if result.modified_count == 0:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Patient profile not found"
+        )
+    
+    return {
+        "message": "Device calibrated successfully",
+        "calibrated_at": datetime.utcnow()
+    }
+
+
+@router.get("/calibration-status", response_model=dict)
+async def get_calibration_status(
+    current_user: User = Depends(require_patient)
+):
+    """
+    Get device calibration status (Patient only).
+    
+    - Returns calibration status and last calibration date
+    """
+    db = get_database()
+    
+    patient_data = await db[PATIENTS_COLLECTION].find_one({"user_id": current_user.id})
+    
+    if not patient_data:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Patient profile not found"
+        )
+    
+    return {
+        "device_calibrated": patient_data.get("device_calibrated", False),
+        "last_calibration_date": patient_data.get("last_calibration_date"),
+        "device_id": patient_data.get("device_id")
+    }

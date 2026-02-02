@@ -16,6 +16,7 @@ import {
 import { Activity, Heart, Loader2 } from "lucide-react"
 import GoogleLoginButton from "@/components/GoogleLoginButton"
 import { useToast } from "@/components/ui/use-toast"
+import { apiClient } from "@/lib/api-client"
 
 export default function LoginPage() {
   const [email, setEmail] = useState("")
@@ -38,29 +39,42 @@ export default function LoginPage() {
 
     setIsLoading(true)
     try {
-      // MOCK AUTH (frontend only)
-      await new Promise((resolve) => setTimeout(resolve, 600))
-
-      const mockAuthData = {
+      // Call the backend API
+      const response = await apiClient.login({
         email,
-        role: selectedRole,
-        isAuthenticated: true,
-      }
+        password,
+      })
 
-      localStorage.setItem("mockAuth", JSON.stringify(mockAuthData))
+      // Store the token with the correct key
+      localStorage.setItem("hyperwatch_token", response.access_token)
+      
+      // Store user info for convenience
+      localStorage.setItem("hyperwatch_user", JSON.stringify({
+        user_id: response.user_id,
+        email: response.email,
+        full_name: response.full_name,
+        role: response.role,
+      }))
 
+      // Show success message
+      toast({
+        title: "Login Successful",
+        description: `Welcome back, ${response.full_name}!`,
+      })
+
+      // Redirect based on the user's role from backend
       const redirectMap: Record<UserRole, string> = {
         patient: "/patient/dashboard",
         caregiver: "/caregiver/dashboard",
         clinician: "/clinician/dashboard",
       }
 
-      window.location.href = redirectMap[selectedRole]
+      window.location.href = redirectMap[response.role as UserRole] || "/patient/dashboard"
     } catch (err: any) {
       toast({
         variant: "destructive",
         title: "Login Failed",
-        description: "Invalid credentials. Please check your email, password, and role.",
+        description: err.message || "Invalid credentials. Please check your email and password.",
       })
       setIsLoading(false)
     }

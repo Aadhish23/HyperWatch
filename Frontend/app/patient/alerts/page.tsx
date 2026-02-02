@@ -1,84 +1,95 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { FixedSidebarLayout } from "@/components/fixed-sidebar-layout"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { AlertCircle, AlertTriangle, Info, Check, X, Filter } from "lucide-react"
-
-const initialAlerts = [
-  {
-    id: 1,
-    type: "critical",
-    title: "High Blood Pressure Alert",
-    message: "BP reading of 145/95 mmHg detected",
-    time: "2 hours ago",
-    severity: "High",
-    dismissed: false,
-  },
-  {
-    id: 2,
-    type: "warning",
-    title: "Elevated Heart Rate",
-    message: "Heart rate reached 95 BPM during rest",
-    time: "5 hours ago",
-    severity: "Medium",
-    dismissed: false,
-  },
-  {
-    id: 3,
-    type: "info",
-    title: "Calibration Due",
-    message: "Device calibration recommended within 24 hours",
-    time: "1 day ago",
-    severity: "Low",
-    dismissed: false,
-  },
-  {
-    id: 4,
-    type: "warning",
-    title: "Motion Artifact Detected",
-    message: "Several readings affected by movement",
-    time: "1 day ago",
-    severity: "Medium",
-    dismissed: false,
-  },
-  {
-    id: 5,
-    type: "critical",
-    title: "Abnormal BP Pattern",
-    message: "Sustained high BP readings over 4 hours",
-    time: "2 days ago",
-    severity: "High",
-    dismissed: false,
-  },
-]
+import { apiClient } from "@/lib/api-client"
+import { useToast } from "@/components/ui/use-toast"
 
 export default function AlertsPage() {
-  const [alerts, setAlerts] = useState(initialAlerts)
+  const [alerts, setAlerts] = useState<any[]>([])
   const [filter, setFilter] = useState("all")
+  const [isLoading, setIsLoading] = useState(true)
+  const { toast } = useToast()
+
+  // Fetch alerts from backend on mount
+  useEffect(() => {
+    fetchAlerts()
+  }, [])
+
+  const fetchAlerts = async () => {
+    try {
+      setIsLoading(true)
+      // Fetch only unread alerts for better UX
+      const data = await apiClient.getAlerts({ is_read: false, limit: 50 })
+      setAlerts(data)
+    } catch (err) {
+      console.error("Failed to fetch alerts", err)
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to load alerts",
+      })
+    } finally {
+      setIsLoading(false)
+    }
+  }
 
   const filteredAlerts = alerts.filter(alert => {
-    if (filter === "all") return !alert.dismissed
-    return alert.type === filter && !alert.dismissed
+    if (filter === "all") return true
+    return alert.alert_type === filter
   })
 
-  const dismissAlert = (id: number) => {
-    setAlerts(alerts.map(alert => 
-      alert.id === id ? { ...alert, dismissed: true } : alert
-    ))
+  const handleMarkAsRead = async (alertId: string) => {
+    try {
+      await apiClient.markAlertAsRead(alertId)
+
+      // 🔥 Re-fetch alerts from backend
+      const updatedAlerts = await apiClient.getAlerts({ is_read: false, limit: 50 })
+      setAlerts(updatedAlerts)
+
+      toast({
+        title: "Alert Acknowledged",
+        description: "Alert marked as read",
+      })
+    } catch (err) {
+      console.error("Failed to mark alert as read", err)
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to mark alert as read",
+      })
+    }
   }
 
-  const acknowledgeAlert = (id: number) => {
-    setAlerts(alerts.map(alert => 
-      alert.id === id ? { ...alert, dismissed: true } : alert
-    ))
+  const handleResolveAlert = async (alertId: string) => {
+    try {
+      await apiClient.resolveAlert(alertId)
+
+      // 🔥 Re-fetch alerts from backend
+      const updatedAlerts = await apiClient.getAlerts({ is_read: false, limit: 50 })
+      setAlerts(updatedAlerts)
+
+      toast({
+        title: "Alert Resolved",
+        description: "Alert has been resolved",
+      })
+    } catch (err) {
+      console.error("Failed to resolve alert", err)
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to resolve alert",
+      })
+    }
   }
 
-  const criticalCount = alerts.filter(a => a.type === "critical" && !a.dismissed).length
-  const warningCount = alerts.filter(a => a.type === "warning" && !a.dismissed).length
-  const infoCount = alerts.filter(a => a.type === "info" && !a.dismissed).length
+  const criticalCount = alerts.filter(a => a.alert_type === "critical").length
+  const warningCount = alerts.filter(a => a.alert_type === "warning").length
+  const infoCount = alerts.filter(a => a.alert_type === "info").length
 
   return (
     <FixedSidebarLayout role="patient">
@@ -170,7 +181,11 @@ export default function AlertsPage() {
             </div>
           </CardHeader>
           <CardContent>
-            {filteredAlerts.length === 0 ? (
+            {isLoading ? (
+              <div className="text-center py-8 text-muted-foreground">
+                <p>Loading alerts...</p>
+              </div>
+            ) : filteredAlerts.length === 0 ? (
               <div className="text-center py-8 text-muted-foreground">
                 <Info className="w-12 h-12 mx-auto mb-2 opacity-50" />
                 <p>No alerts to display</p>
@@ -179,11 +194,11 @@ export default function AlertsPage() {
               <div className="space-y-4">
                 {filteredAlerts.map((alert) => (
                   <div
-                    key={alert.id}
+                    key={alert._id}
                     className={`p-4 rounded-lg border-l-4 transition-all hover:shadow-md ${
-                      alert.type === "critical"
+                      alert.alert_type === "critical"
                         ? "bg-destructive/5 border-l-destructive"
-                        : alert.type === "warning"
+                        : alert.alert_type === "warning"
                           ? "bg-yellow-50 border-l-yellow-600"
                           : "bg-blue-50 border-l-blue-600"
                     }`}
@@ -191,40 +206,44 @@ export default function AlertsPage() {
                     <div className="flex items-start justify-between gap-4">
                       <div className="flex-1">
                         <div className="flex items-center gap-2 mb-1">
-                          {alert.type === "critical" ? (
+                          {alert.alert_type === "critical" ? (
                             <AlertCircle className="w-5 h-5 text-destructive" />
-                          ) : alert.type === "warning" ? (
+                          ) : alert.alert_type === "warning" ? (
                             <AlertTriangle className="w-5 h-5 text-yellow-600" />
                           ) : (
                             <Info className="w-5 h-5 text-blue-600" />
                           )}
-                          <h3 className="font-semibold">{alert.title}</h3>
+                          <h3 className="font-semibold">{alert.title || alert.alert_type}</h3>
                         </div>
                         <p className="text-sm text-muted-foreground mb-2">{alert.message}</p>
-                        <p className="text-xs text-muted-foreground">{alert.time}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {new Date(alert.created_at).toLocaleString()}
+                        </p>
                       </div>
                       <div className="flex flex-col items-end gap-2">
                         <Badge
                           variant={
-                            alert.type === "critical" ? "destructive" : alert.type === "warning" ? "default" : "secondary"
+                            alert.alert_type === "critical" ? "destructive" : alert.alert_type === "warning" ? "default" : "secondary"
                           }
                         >
-                          {alert.severity}
+                          {alert.severity || alert.alert_type}
                         </Badge>
                         <div className="flex gap-2">
                           <Button
                             size="sm"
                             variant="outline"
-                            onClick={() => acknowledgeAlert(alert.id)}
+                            onClick={() => handleMarkAsRead(alert._id)}
                             className="h-8 px-2"
+                            title="Mark as read"
                           >
                             <Check className="w-4 h-4" />
                           </Button>
                           <Button
                             size="sm"
                             variant="ghost"
-                            onClick={() => dismissAlert(alert.id)}
+                            onClick={() => handleResolveAlert(alert._id)}
                             className="h-8 px-2"
+                            title="Resolve alert"
                           >
                             <X className="w-4 h-4" />
                           </Button>

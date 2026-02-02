@@ -302,3 +302,148 @@ async def create_patient(
         message=f"Patient created successfully. Temporary password: {temp_password}"
     )
 
+
+@router.get("/patients/{patient_id}", response_model=UserProfile)
+async def get_patient_detail(
+    patient_id: str,
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Get detailed patient information.
+    
+    - Patients can view their own details
+    - Caregivers/Clinicians can view assigned patients
+    """
+    db = get_database()
+    
+    # Check access permissions
+    if current_user.role == "patient":
+        if patient_id != current_user.id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Access denied"
+            )
+    elif current_user.role in ["caregiver", "clinician"]:
+        if patient_id not in current_user.assigned_patients:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Access denied to this patient's data"
+            )
+    
+    # Get user data
+    try:
+        user_data = await db[USERS_COLLECTION].find_one({"_id": ObjectId(patient_id)})
+    except:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid patient ID"
+        )
+    
+    if not user_data:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Patient not found"
+        )
+    
+    # Build profile
+    profile = UserProfile(
+        id=str(user_data["_id"]),
+        email=user_data.get("email"),
+        full_name=user_data.get("full_name"),
+        role=user_data.get("role"),
+        phone=user_data.get("phone"),
+        date_of_birth=user_data.get("date_of_birth"),
+        gender=user_data.get("gender"),
+        assigned_patients=user_data.get("assigned_patients", []),
+        assigned_caregiver=user_data.get("assigned_caregiver"),
+        created_at=user_data.get("created_at")
+    )
+    
+    # Get medical information if patient
+    if user_data.get("role") == "patient":
+        patient_data = await db[PATIENTS_COLLECTION].find_one({"user_id": patient_id})
+        if patient_data:
+            profile.blood_type = patient_data.get("blood_type")
+            profile.allergies = patient_data.get("allergies", [])
+            profile.medications = patient_data.get("medications", [])
+            profile.medical_conditions = patient_data.get("medical_conditions", [])
+            profile.emergency_contact_name = patient_data.get("emergency_contact_name")
+            profile.emergency_contact_phone = patient_data.get("emergency_contact_phone")
+            profile.device_id = patient_data.get("device_id")
+            profile.device_calibrated = patient_data.get("device_calibrated", False)
+    
+    return profile
+
+
+@router.put("/patients/{patient_id}/thresholds", response_model=dict)
+async def update_patient_thresholds(
+    patient_id: str,
+    heart_rate_min: int = None,
+    heart_rate_max: int = None,
+    systolic_bp_min: int = None,
+    systolic_bp_max: int = None,
+    diastolic_bp_min: int = None,
+    diastolic_bp_max: int = None,
+    oxygen_saturation_min: int = None,
+    temperature_min: float = None,
+    temperature_max: float = None,
+    current_user: User = Depends(require_caregiver_or_clinician)
+):
+    """
+    Update patient vital sign thresholds (Caregiver/Clinician only).
+    
+    - Sets custom thresholds for alert generation
+    """
+    db = get_database()
+    
+    # Verify access
+    if patient_id not in current_user.assigned_patients:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Access denied to this patient"
+        )
+    
+    # Build update dictionary
+    threshold_update = {}
+    if heart_rate_min is not None:
+        threshold_update["heart_rate_min"] = heart_rate_min
+    if heart_rate_max is not None:
+        threshold_update["heart_rate_max"] = heart_rate_max
+    if systolic_bp_min is not None:
+        threshold_update["systolic_bp_min"] = systolic_bp_min
+    if systolic_bp_max is not None:
+        threshold_update["systolic_bp_max"] = systolic_bp_max
+    if diastolic_bp_min is not None:
+        threshold_update["diastolic_bp_min"] = diastolic_bp_min
+    if diastolic_bp_max is not None:
+        threshold_update["diastolic_bp_max"] = diastolic_bp_max
+    if oxygen_saturation_min is not None:
+        threshold_update["oxygen_saturation_min"] = oxygen_saturation_min
+    if temperature_min is not None:
+        threshold_update["temperature_min"] = temperature_min
+    if temperature_max is not None:
+        threshold_update["temperature_max"] = temperature_max
+    
+    if not threshold_update:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="No threshold values provided"
+        )
+    
+    threshold_update["updated_at"] = datetime.utcnow()
+    
+    result = await db[PATIENTS_COLLECTION].update_one(
+        {"user_id": patient_id},
+        {"$set": threshold_update}
+    )
+    
+    if result.matched_count == 0:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Patient profile not found"
+        )
+    
+    return {
+        "message": "Patient thresholds updated successfully",
+        "updated_fields": list(threshold_update.keys())
+    }
