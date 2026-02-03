@@ -228,26 +228,16 @@ export default function AlertsPage() {
                         >
                           {alert.severity || alert.alert_type}
                         </Badge>
-                        <div className="flex gap-2">
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => handleMarkAsRead(alert._id)}
-                            className="h-8 px-2"
-                            title="Mark as read"
-                          >
-                            <Check className="w-4 h-4" />
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            onClick={() => handleResolveAlert(alert._id)}
-                            className="h-8 px-2"
-                            title="Resolve alert"
-                          >
-                            <X className="w-4 h-4" />
-                          </Button>
-                        </div>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => handleMarkAsRead(alert._id)}
+                          className="h-8 px-3 gap-2"
+                          title="Mark as read"
+                        >
+                          <Check className="w-4 h-4" />
+                          <span className="text-xs">Acknowledge</span>
+                        </Button>
                       </div>
                     </div>
                   </div>

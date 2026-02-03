@@ -79,11 +79,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const logout = useCallback(() => {
     setUser(null)
-    localStorage.removeItem("mockAuth")
-    localStorage.removeItem("hyperwatch_user")
-    localStorage.removeItem("token")
-    router.push("/login")
-  }, [router])
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem("mockAuth")
+      localStorage.removeItem("hyperwatch_user")
+      localStorage.removeItem("hyperwatch_token")
+      localStorage.removeItem("token")
+      window.location.href = "/login"
+    }
+  }, [])
 
   const contextValue = useMemo(
     () => ({ user, login, logout, isLoading, isAuthenticated: !!user }),

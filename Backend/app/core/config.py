@@ -18,6 +18,14 @@ class Settings(BaseSettings):
     # CORS Configuration
     FRONTEND_URL: str = "http://localhost:3000"
     
+    # Email Configuration
+    SMTP_HOST: str = "smtp.gmail.com"
+    SMTP_PORT: int = 587
+    SMTP_USER: str = ""  # Your email address
+    SMTP_PASSWORD: str = ""  # Your app password
+    SMTP_FROM_EMAIL: str = ""  # Sender email
+    SMTP_FROM_NAME: str = "HyperWatch"
+    
     # Application Info
     APP_NAME: str = "HyperWatch"
     APP_VERSION: str = "1.0.0"

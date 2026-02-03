@@ -1,8 +1,9 @@
 from app.models.alert import Alert
-from app.core.database import get_database, ALERTS_COLLECTION
+from app.core.database import get_database, ALERTS_COLLECTION, USERS_COLLECTION, PATIENTS_COLLECTION
 from typing import List, Optional
 from bson import ObjectId
 from datetime import datetime
+from app.services.email_service import email_service
 
 
 async def create_system_alert(
@@ -10,10 +11,11 @@ async def create_system_alert(
     title: str,
     message: str,
     alert_type: str = "info",
-    severity: str = "low"
+    severity: str = "low",
+    vitals_data: Optional[dict] = None
 ) -> str:
     """
-    Create a system-generated alert.
+    Create a system-generated alert and send email notifications.
     
     Args:
         patient_id: Patient ID
@@ -21,6 +23,7 @@ async def create_system_alert(
         message: Alert message
         alert_type: "critical", "warning", or "info"
         severity: "high", "medium", or "low"
+        vitals_data: Optional vital signs data to include in email
     
     Returns:
         Created alert ID
@@ -37,6 +40,37 @@ async def create_system_alert(
     
     alert_dict = alert.model_dump(by_alias=True, exclude={"id"})
     result = await db[ALERTS_COLLECTION].insert_one(alert_dict)
+    
+    # Send email notification for critical and warning alerts
+    if alert_type in ["critical", "warning"]:
+        try:
+            # Get patient information
+            user_data = await db[USERS_COLLECTION].find_one({"_id": ObjectId(patient_id)})
+            if user_data:
+                patient_name = user_data.get("full_name", "Patient")
+                
+                # Get patient's assigned caregivers/clinicians
+                patient_record = await db[PATIENTS_COLLECTION].find_one({"user_id": patient_id})
+                if patient_record:
+                    assigned_caregiver_id = patient_record.get("assigned_caregiver")
+                    
+                    # Send email to assigned caregiver
+                    if assigned_caregiver_id:
+                        caregiver_data = await db[USERS_COLLECTION].find_one({"_id": ObjectId(assigned_caregiver_id)})
+                        if caregiver_data:
+                            await email_service.send_alert_email(
+                                to_email=caregiver_data["email"],
+                                patient_name=patient_name,
+                                alert_type=alert_type,
+                                alert_message=message,
+                                vitals_data=vitals_data
+                            )
+                
+                # TODO: Send to family members from patient's family_alert_recipients list
+                
+        except Exception as e:
+            # Log error but don't fail alert creation
+            print(f"Failed to send alert email: {e}")
     
     return str(result.inserted_id)
 

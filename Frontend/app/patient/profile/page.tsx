@@ -6,9 +6,9 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
-import { Wifi, Battery, Bluetooth, Mail, UserPlus, Trash2 } from "lucide-react"
+import { Wifi, Battery, Bluetooth, Mail, UserPlus, Trash2, Edit, Lock, X } from "lucide-react"
 import { useAuth } from "@/lib/auth-context"
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useToast } from "@/components/ui/use-toast"
 
 interface FamilyMember {
@@ -17,14 +17,206 @@ interface FamilyMember {
   email: string
 }
 
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+
 export default function ProfilePage() {
   const { user } = useAuth()
   const { toast } = useToast()
+  
+  // Personal Information State
+  const [isEditing, setIsEditing] = useState(false)
+  const [isSaving, setIsSaving] = useState(false)
+  const [personalInfo, setPersonalInfo] = useState({
+    full_name: "",
+    email: "",
+    phone: "",
+    date_of_birth: "",
+  })
+  
+  // Password Change State
+  const [showPasswordDialog, setShowPasswordDialog] = useState(false)
+  const [passwordData, setPasswordData] = useState({
+    old_password: "",
+    new_password: "",
+    confirm_password: "",
+  })
+  const [isChangingPassword, setIsChangingPassword] = useState(false)
+  
+  // Family Members State
   const [familyMembers, setFamilyMembers] = useState<FamilyMember[]>([
     { id: "1", name: "John Johnson", email: "john.johnson@example.com" },
   ])
   const [newName, setNewName] = useState("")
   const [newEmail, setNewEmail] = useState("")
+
+  // Fetch user profile on mount
+  useEffect(() => {
+    fetchUserProfile()
+  }, [])
+
+  const fetchUserProfile = async () => {
+    try {
+      const token = localStorage.getItem('hyperwatch_token')
+      if (!token) return
+
+      const response = await fetch(`${API_BASE_URL}/users/profile`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      })
+
+      if (response.ok) {
+        const data = await response.json()
+        setPersonalInfo({
+          full_name: data.full_name || "",
+          email: data.email || "",
+          phone: data.phone || "",
+          date_of_birth: data.date_of_birth ? data.date_of_birth.split('T')[0] : "",
+        })
+      }
+    } catch (error) {
+      console.error("Failed to fetch profile", error)
+    }
+  }
+
+  const handleSaveProfile = async () => {
+    setIsSaving(true)
+    try {
+      const token = localStorage.getItem('hyperwatch_token')
+      if (!token) {
+        toast({
+          variant: "destructive",
+          title: "Error",
+          description: "Not authenticated",
+        })
+        return
+      }
+
+      const response = await fetch(`${API_BASE_URL}/users/profile`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          full_name: personalInfo.full_name,
+          phone: personalInfo.phone,
+          date_of_birth: personalInfo.date_of_birth ? new Date(personalInfo.date_of_birth).toISOString() : null,
+        }),
+      })
+
+      if (response.ok) {
+        setIsEditing(false)
+        toast({
+          title: "Profile Updated",
+          description: "Your personal information has been saved successfully",
+        })
+        
+        // Update localStorage
+        const userData = JSON.parse(localStorage.getItem('hyperwatch_user') || '{}')
+        userData.full_name = personalInfo.full_name
+        localStorage.setItem('hyperwatch_user', JSON.stringify(userData))
+      } else {
+        const error = await response.json()
+        toast({
+          variant: "destructive",
+          title: "Update Failed",
+          description: error.detail || "Failed to update profile",
+        })
+      }
+    } catch (error) {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to update profile",
+      })
+    } finally {
+      setIsSaving(false)
+    }
+  }
+
+  const handleChangePassword = async () => {
+    // Validation
+    if (!passwordData.old_password || !passwordData.new_password || !passwordData.confirm_password) {
+      toast({
+        variant: "destructive",
+        title: "Missing Fields",
+        description: "Please fill in all password fields",
+      })
+      return
+    }
+
+    if (passwordData.new_password !== passwordData.confirm_password) {
+      toast({
+        variant: "destructive",
+        title: "Password Mismatch",
+        description: "New passwords do not match",
+      })
+      return
+    }
+
+    if (passwordData.new_password.length < 6) {
+      toast({
+        variant: "destructive",
+        title: "Weak Password",
+        description: "Password must be at least 6 characters long",
+      })
+      return
+    }
+
+    setIsChangingPassword(true)
+    try {
+      const token = localStorage.getItem('hyperwatch_token')
+      if (!token) {
+        toast({
+          variant: "destructive",
+          title: "Error",
+          description: "Not authenticated",
+        })
+        return
+      }
+
+      const response = await fetch(`${API_BASE_URL}/auth/change-password`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          old_password: passwordData.old_password,
+          new_password: passwordData.new_password,
+        }),
+      })
+
+      if (response.ok) {
+        toast({
+          title: "Password Changed",
+          description: "Your password has been updated successfully",
+        })
+        setShowPasswordDialog(false)
+        setPasswordData({
+          old_password: "",
+          new_password: "",
+          confirm_password: "",
+        })
+      } else {
+        const error = await response.json()
+        toast({
+          variant: "destructive",
+          title: "Password Change Failed",
+          description: error.detail || "Failed to change password",
+        })
+      }
+    } catch (error) {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to change password",
+      })
+    } finally {
+      setIsChangingPassword(false)
+    }
+  }
 
   return (
     <FixedSidebarLayout role="patient">
@@ -38,27 +230,97 @@ export default function ProfilePage() {
           {/* User Profile */}
           <Card className="border-0 shadow-sm">
             <CardHeader>
-              <CardTitle>Personal Information</CardTitle>
-              <CardDescription>Update your profile details</CardDescription>
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle>Personal Information</CardTitle>
+                  <CardDescription>Update your profile details</CardDescription>
+                </div>
+                {!isEditing && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setIsEditing(true)}
+                    className="gap-2"
+                  >
+                    <Edit className="w-4 h-4" />
+                    Edit
+                  </Button>
+                )}
+              </div>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="name">Full Name</Label>
-                <Input id="name" defaultValue="AADHISH S" />
+                <Input
+                  id="name"
+                  value={personalInfo.full_name}
+                  onChange={(e) => setPersonalInfo({ ...personalInfo, full_name: e.target.value })}
+                  disabled={!isEditing}
+                />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="email">Email</Label>
-                <Input id="email" type="email" defaultValue={user?.email || "aadhish23@example.com"} />
+                <Input
+                  id="email"
+                  type="email"
+                  value={personalInfo.email}
+                  disabled
+                  className="bg-muted"
+                />
+                <p className="text-xs text-muted-foreground">Email cannot be changed</p>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="phone">Phone Number</Label>
-                <Input id="phone" type="tel" defaultValue="+91 94439936364" />
+                <Input
+                  id="phone"
+                  type="tel"
+                  value={personalInfo.phone}
+                  onChange={(e) => setPersonalInfo({ ...personalInfo, phone: e.target.value })}
+                  disabled={!isEditing}
+                  placeholder="+91 XXXXXXXXXX"
+                />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="dob">Date of Birth</Label>
-                <Input id="dob" type="date" defaultValue="2007-05-15" />
+                <Input
+                  id="dob"
+                  type="date"
+                  value={personalInfo.date_of_birth}
+                  onChange={(e) => setPersonalInfo({ ...personalInfo, date_of_birth: e.target.value })}
+                  disabled={!isEditing}
+                />
               </div>
-              <Button className="w-full">Save Changes</Button>
+              
+              {isEditing ? (
+                <div className="flex gap-2">
+                  <Button
+                    onClick={handleSaveProfile}
+                    disabled={isSaving}
+                    className="flex-1"
+                  >
+                    {isSaving ? "Saving..." : "Save Changes"}
+                  </Button>
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      setIsEditing(false)
+                      fetchUserProfile()
+                    }}
+                    disabled={isSaving}
+                  >
+                    Cancel
+                  </Button>
+                </div>
+              ) : (
+                <Button
+                  variant="outline"
+                  className="w-full gap-2"
+                  onClick={() => setShowPasswordDialog(true)}
+                >
+                  <Lock className="w-4 h-4" />
+                  Change Password
+                </Button>
+              )}
             </CardContent>
           </Card>
 
@@ -293,6 +555,94 @@ export default function ProfilePage() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Password Change Dialog */}
+      {showPasswordDialog && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+          <Card className="w-full max-w-md mx-4">
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <CardTitle className="flex items-center gap-2">
+                  <Lock className="w-5 h-5" />
+                  Change Password
+                </CardTitle>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => {
+                    setShowPasswordDialog(false)
+                    setPasswordData({
+                      old_password: "",
+                      new_password: "",
+                      confirm_password: "",
+                    })
+                  }}
+                >
+                  <X className="w-4 h-4" />
+                </Button>
+              </div>
+              <CardDescription>
+                Enter your current password and choose a new password
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="old_password">Current Password</Label>
+                <Input
+                  id="old_password"
+                  type="password"
+                  value={passwordData.old_password}
+                  onChange={(e) => setPasswordData({ ...passwordData, old_password: e.target.value })}
+                  placeholder="Enter current password"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="new_password">New Password</Label>
+                <Input
+                  id="new_password"
+                  type="password"
+                  value={passwordData.new_password}
+                  onChange={(e) => setPasswordData({ ...passwordData, new_password: e.target.value })}
+                  placeholder="Enter new password (min 6 characters)"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="confirm_password">Confirm New Password</Label>
+                <Input
+                  id="confirm_password"
+                  type="password"
+                  value={passwordData.confirm_password}
+                  onChange={(e) => setPasswordData({ ...passwordData, confirm_password: e.target.value })}
+                  placeholder="Re-enter new password"
+                />
+              </div>
+              <div className="flex gap-2 pt-2">
+                <Button
+                  onClick={handleChangePassword}
+                  disabled={isChangingPassword}
+                  className="flex-1"
+                >
+                  {isChangingPassword ? "Changing..." : "Change Password"}
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setShowPasswordDialog(false)
+                    setPasswordData({
+                      old_password: "",
+                      new_password: "",
+                      confirm_password: "",
+                    })
+                  }}
+                  disabled={isChangingPassword}
+                >
+                  Cancel
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
     </FixedSidebarLayout>
   )
 }

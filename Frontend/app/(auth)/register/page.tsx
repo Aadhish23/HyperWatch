@@ -7,6 +7,9 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Activity, Loader2 } from "lucide-react"
 import { useToast } from "@/components/ui/use-toast"
+import { useRouter } from "next/navigation"
+
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
 export default function RegisterPage() {
   const [isLoading, setIsLoading] = useState(false)
@@ -18,6 +21,7 @@ export default function RegisterPage() {
     confirmPassword: "",
   })
   const { toast } = useToast()
+  const router = useRouter()
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -51,17 +55,69 @@ export default function RegisterPage() {
     }
 
     setIsLoading(true)
-    await new Promise((r) => setTimeout(r, 800))
     
-    toast({
-      variant: "success",
-      title: "Registration Successful!",
-      description: "Redirecting to login page...",
-    })
-    
-    setTimeout(() => {
-      window.location.href = "/login"
-    }, 1500)
+    try {
+      // Call the backend registration API
+      const response = await fetch(`${API_BASE_URL}/auth/register`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          email: formData.email,
+          password: formData.password,
+          full_name: formData.name,
+          role: 'patient',
+          phone: formData.deviceId, // Using deviceId as phone for now
+        }),
+      })
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        // Handle specific error cases
+        if (response.status === 400 && data.detail === "Email already registered") {
+          toast({
+            variant: "destructive",
+            title: "Email Already Exists",
+            description: "This email is already registered. Please use a different email or login.",
+          })
+        } else {
+          toast({
+            variant: "destructive",
+            title: "Registration Failed",
+            description: data.detail || "An error occurred during registration. Please try again.",
+          })
+        }
+        return
+      }
+
+      // Store the token and user info
+      localStorage.setItem('hyperwatch_token', data.access_token)
+      localStorage.setItem('hyperwatch_user', JSON.stringify({
+        user_id: data.user_id,
+        email: data.email,
+        full_name: data.full_name,
+        role: data.role,
+      }))
+
+      toast({
+        title: "Registration Successful!",
+        description: "Redirecting to your dashboard...",
+      })
+      
+      setTimeout(() => {
+        router.push('/patient/dashboard')
+      }, 1500)
+    } catch (error: any) {
+      toast({
+        variant: "destructive",
+        title: "Network Error",
+        description: error.message || "Unable to connect to the server. Please try again.",
+      })
+    } finally {
+      setIsLoading(false)
+    }
   }
 
   return (
