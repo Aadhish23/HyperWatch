@@ -16,6 +16,7 @@ const criticalAlerts = [
     description: "Sustained high BP readings above 140/90 for 2+ weeks",
     timestamp: "Ongoing",
     mlConfidence: 96,
+    vitals: { systolic: 165, diastolic: 105, heartRate: 95 },
   },
   {
     id: 2,
@@ -23,9 +24,21 @@ const criticalAlerts = [
     age: 68,
     type: "Acute BP Spike",
     severity: "Critical",
-    description: "Sudden BP increase to 165/105 mmHg",
-    timestamp: "1 hour ago",
+    description: "Sudden BP increase to 172/110 mmHg, elevated HR: 98 bpm",
+    timestamp: "45 min ago",
     mlConfidence: 94,
+    vitals: { systolic: 172, diastolic: 110, heartRate: 98 },
+  },
+  {
+    id: 3,
+    patient: "Sarah Johnson",
+    age: 34,
+    type: "Rapid Heart Rate",
+    severity: "Warning",
+    description: "Persistent tachycardia detected: 108 bpm. BP: 142/88 mmHg",
+    timestamp: "2 hours ago",
+    mlConfidence: 88,
+    vitals: { systolic: 142, diastolic: 88, heartRate: 108 },
   },
 ]
 
@@ -35,18 +48,30 @@ const mlAlerts = [
     patient: "Robert Williams",
     age: 58,
     pattern: "Nocturnal Hypertension",
-    description: "ML model detected abnormal nighttime BP elevation pattern",
+    description: "ML model detected abnormal nighttime BP elevation pattern. Avg night BP: 152/94 mmHg, HR: 78 bpm",
     confidence: 89,
     timestamp: "2 hours ago",
+    vitals: { systolic: 152, diastolic: 94, heartRate: 78 },
   },
   {
     id: 2,
     patient: "Lisa Anderson",
     age: 51,
     pattern: "White Coat Effect",
-    description: "Possible anxiety-induced BP readings detected",
+    description: "Possible anxiety-induced BP readings detected. Clinical avg: 138/85 vs Home avg: 122/76 mmHg",
     confidence: 82,
     timestamp: "5 hours ago",
+    vitals: { systolic: 138, diastolic: 85, heartRate: 85 },
+  },
+  {
+    id: 3,
+    patient: "Emma Rodriguez",
+    age: 45,
+    pattern: "Postprandial Hypotension",
+    description: "BP drops significantly after meals. Post-meal avg: 95/60 mmHg, HR: 92 bpm",
+    confidence: 76,
+    timestamp: "6 hours ago",
+    vitals: { systolic: 95, diastolic: 60, heartRate: 92 },
   },
 ]
 
@@ -66,7 +91,7 @@ export default function ClinicianAlertsPage() {
               <CardDescription>Critical Alerts</CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="text-3xl font-bold text-destructive">2</div>
+              <div className="text-3xl font-bold text-destructive">{criticalAlerts.length}</div>
               <p className="text-sm text-muted-foreground mt-1">Require immediate action</p>
             </CardContent>
           </Card>
@@ -76,7 +101,7 @@ export default function ClinicianAlertsPage() {
               <CardDescription>ML Anomalies</CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="text-3xl font-bold text-yellow-700">2</div>
+              <div className="text-3xl font-bold text-yellow-700">{mlAlerts.length}</div>
               <p className="text-sm text-muted-foreground mt-1">Pattern detected</p>
             </CardContent>
           </Card>

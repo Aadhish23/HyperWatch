@@ -93,8 +93,8 @@ export default function RegisterPage() {
       }
 
       // Store the token and user info
-      localStorage.setItem('hyperwatch_token', data.access_token)
-      localStorage.setItem('hyperwatch_user', JSON.stringify({
+      localStorage.setItem('hemosense_token', data.access_token)
+      localStorage.setItem('hemosense_user', JSON.stringify({
         user_id: data.user_id,
         email: data.email,
         full_name: data.full_name,
@@ -131,7 +131,7 @@ export default function RegisterPage() {
             <CardTitle className="text-2xl">Patient Registration</CardTitle>
           </div>
           <CardDescription>
-            Register your HyperWatch device to start monitoring your blood pressure.
+            Register your HemoSense AI device to start monitoring your blood pressure.
           </CardDescription>
         </CardHeader>
 

@@ -18,7 +18,7 @@ export default function AuthLayout({
               <Activity className="w-7 h-7 text-primary-foreground" />
             </div>
             <div>
-              <h1 className="text-3xl font-bold">HyperWatch</h1>
+              <h1 className="text-3xl font-bold">HemoSense AI</h1>
               <p className="text-sm text-muted-foreground">
                 Continuous BP Monitoring
               </p>

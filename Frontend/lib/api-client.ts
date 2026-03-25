@@ -27,7 +27,7 @@ export interface AuthResponse {
 // Helper function to get auth token from localStorage
 const getAuthToken = (): string | null => {
   if (typeof window === 'undefined') return null;
-  return localStorage.getItem('hyperwatch_token');
+  return localStorage.getItem('hemosense_token');
 };
 
 // Helper function to get auth headers

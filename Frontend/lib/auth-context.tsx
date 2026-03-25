@@ -28,7 +28,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const router = useRouter()
 
   useEffect(() => {
-    const storedMock = localStorage.getItem("mockAuth") || localStorage.getItem("hyperwatch_user")
+    const storedMock = localStorage.getItem("mockAuth") || localStorage.getItem("hemosense_user")
     if (storedMock) {
       try {
         const parsed = JSON.parse(storedMock)
@@ -81,8 +81,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(null)
     if (typeof window !== 'undefined') {
       localStorage.removeItem("mockAuth")
-      localStorage.removeItem("hyperwatch_user")
-      localStorage.removeItem("hyperwatch_token")
+      localStorage.removeItem("hemosense_user")
+      localStorage.removeItem("hemosense_token")
       localStorage.removeItem("token")
       window.location.href = "/login"
     }

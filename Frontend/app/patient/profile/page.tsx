@@ -56,7 +56,7 @@ export default function ProfilePage() {
 
   const fetchUserProfile = async () => {
     try {
-      const token = localStorage.getItem('hyperwatch_token')
+      const token = localStorage.getItem('hemosense_token')
       if (!token) return
 
       const response = await fetch(`${API_BASE_URL}/users/profile`, {
@@ -82,7 +82,7 @@ export default function ProfilePage() {
   const handleSaveProfile = async () => {
     setIsSaving(true)
     try {
-      const token = localStorage.getItem('hyperwatch_token')
+      const token = localStorage.getItem('hemosense_token')
       if (!token) {
         toast({
           variant: "destructive",
@@ -113,9 +113,9 @@ export default function ProfilePage() {
         })
         
         // Update localStorage
-        const userData = JSON.parse(localStorage.getItem('hyperwatch_user') || '{}')
+        const userData = JSON.parse(localStorage.getItem('hemosense_user') || '{}')
         userData.full_name = personalInfo.full_name
-        localStorage.setItem('hyperwatch_user', JSON.stringify(userData))
+        localStorage.setItem('hemosense_user', JSON.stringify(userData))
       } else {
         const error = await response.json()
         toast({
@@ -166,7 +166,7 @@ export default function ProfilePage() {
 
     setIsChangingPassword(true)
     try {
-      const token = localStorage.getItem('hyperwatch_token')
+      const token = localStorage.getItem('hemosense_token')
       if (!token) {
         toast({
           variant: "destructive",

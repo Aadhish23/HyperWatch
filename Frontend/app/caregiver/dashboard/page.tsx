@@ -4,7 +4,7 @@ import { FixedSidebarLayout } from "@/components/fixed-sidebar-layout"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { AlertCircle, ChevronRight, Heart, TrendingUp, User } from "lucide-react"
+import { AlertCircle, ChevronRight, Heart, Activity, TrendingUp, User } from "lucide-react"
 import Link from "next/link"
 
 const patients = [
@@ -12,20 +12,22 @@ const patients = [
     id: 1,
     name: "Sarah Johnson",
     age: 34,
-    latestBP: "120/80",
-    status: "normal",
+    latestBP: "135/84",
+    heartRate: 82,
+    status: "elevated",
     lastActive: "5 min ago",
-    alerts: 0,
-    trend: "stable",
+    alerts: 1,
+    trend: "up",
   },
   {
     id: 2,
     name: "Michael Chen",
     age: 62,
-    latestBP: "145/95",
-    status: "elevated",
+    latestBP: "165/105",
+    heartRate: 95,
+    status: "critical",
     lastActive: "15 min ago",
-    alerts: 2,
+    alerts: 3,
     trend: "up",
   },
   {
@@ -33,6 +35,7 @@ const patients = [
     name: "Emma Rodriguez",
     age: 45,
     latestBP: "118/76",
+    heartRate: 68,
     status: "normal",
     lastActive: "1 hour ago",
     alerts: 0,
@@ -42,21 +45,34 @@ const patients = [
     id: 4,
     name: "Robert Williams",
     age: 58,
-    latestBP: "138/88",
+    latestBP: "148/92",
+    heartRate: 86,
     status: "elevated",
     lastActive: "2 hours ago",
-    alerts: 1,
+    alerts: 2,
     trend: "up",
   },
   {
     id: 5,
     name: "Lisa Anderson",
     age: 51,
-    latestBP: "115/75",
+    latestBP: "122/78",
+    heartRate: 72,
     status: "normal",
     lastActive: "30 min ago",
     alerts: 0,
-    trend: "down",
+    trend: "stable",
+  },
+  {
+    id: 6,
+    name: "David Thompson",
+    age: 68,
+    latestBP: "172/110",
+    heartRate: 98,
+    status: "critical",
+    lastActive: "45 min ago",
+    alerts: 4,
+    trend: "up",
   },
 ]
 
@@ -107,10 +123,22 @@ export default function CaregiverDashboard() {
 
           <Card className="border-0 shadow-sm bg-destructive/5 border-destructive/20">
             <CardHeader className="pb-2">
-              <CardDescription>Active Alerts</CardDescription>
+              <CardDescription>Critical Status</CardDescription>
             </CardHeader>
             <CardContent>
               <div className="text-3xl font-bold text-destructive">
+                {patients.filter((p) => p.status === "critical").length}
+              </div>
+              <p className="text-sm text-muted-foreground mt-1">Immediate action needed</p>
+            </CardContent>
+          </Card>
+
+          <Card className="border-0 shadow-sm bg-blue-50 border-blue-200">
+            <CardHeader className="pb-2">
+              <CardDescription>Active Alerts</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="text-3xl font-bold text-blue-700">
                 {patients.reduce((sum, p) => sum + p.alerts, 0)}
               </div>
               <p className="text-sm text-muted-foreground mt-1">Require review</p>
@@ -152,27 +180,30 @@ export default function CaregiverDashboard() {
 
                       <div className="flex items-center gap-4">
                         <div className="text-right">
-                          <div className="flex items-center gap-2">
-                            <Heart className="w-4 h-4 text-primary" />
+                          <div className="flex items-center gap-2 mb-2">
+                            <Heart className="w-4 h-4 text-red-500" />
                             <span className="text-lg font-semibold">{patient.latestBP}</span>
                             <span className="text-sm text-muted-foreground">mmHg</span>
                           </div>
-                          <div className="flex items-center gap-1 text-xs mt-1">
-                            <TrendingUp
-                              className={`w-3 h-3 ${patient.trend === "up" ? "text-destructive" : patient.trend === "down" ? "text-green-600 rotate-180" : "text-muted-foreground"}`}
-                            />
-                            <span className="text-muted-foreground capitalize">{patient.trend}</span>
+                          <div className="flex items-center gap-2">
+                            <Activity className="w-4 h-4 text-blue-500" />
+                            <span className="text-lg font-semibold">{patient.heartRate}</span>
+                            <span className="text-sm text-muted-foreground">bpm</span>
                           </div>
                         </div>
 
                         <div className="flex flex-col gap-2 items-end">
                           <Badge
-                            variant={patient.status === "normal" ? "secondary" : "destructive"}
+                            variant={patient.status === "normal" ? "secondary" : patient.status === "critical" ? "destructive" : "default"}
                             className={
-                              patient.status === "normal" ? "bg-green-100 text-green-700 border-green-300" : ""
+                              patient.status === "normal" 
+                                ? "bg-green-100 text-green-700 border-green-300" 
+                                : patient.status === "critical"
+                                ? "bg-red-100 text-red-700 border-red-300"
+                                : "bg-yellow-100 text-yellow-700 border-yellow-300"
                             }
                           >
-                            {patient.status === "normal" ? "Normal" : "Elevated"}
+                            {patient.status === "normal" ? "Normal" : patient.status === "critical" ? "Critical" : "Elevated"}
                           </Badge>
                           {patient.alerts > 0 && (
                             <div className="flex items-center gap-1 text-xs text-destructive">

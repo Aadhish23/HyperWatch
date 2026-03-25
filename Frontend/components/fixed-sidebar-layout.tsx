@@ -168,7 +168,7 @@ export function FixedSidebarLayout({ children, role }: FixedSidebarLayoutProps) 
                 <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center">
                   <Activity className="w-5 h-5 text-primary-foreground" />
                 </div>
-                <span className="text-lg">HyperWatch</span>
+                <span className="text-lg">HemoSense AI</span>
               </Link>
               <Button variant="ghost" size="icon" onClick={() => setMobileOpen(false)}>
                 <X className="w-5 h-5" />
@@ -230,7 +230,7 @@ export function FixedSidebarLayout({ children, role }: FixedSidebarLayoutProps) 
             <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center">
               <Activity className="w-5 h-5 text-primary-foreground" />
             </div>
-            <span className="text-lg">HyperWatch</span>
+            <span className="text-lg">HemoSense AI</span>
           </Link>
         </div>
 
@@ -294,7 +294,7 @@ export function FixedSidebarLayout({ children, role }: FixedSidebarLayoutProps) 
               <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center">
                 <Activity className="w-5 h-5 text-primary-foreground" />
               </div>
-              <span className="text-base">HyperWatch</span>
+              <span className="text-base">HemoSense AI</span>
             </Link>
 
             <div className="flex-1" />

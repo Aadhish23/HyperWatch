@@ -14,12 +14,26 @@ export default function LiveMonitoringPage() {
   const [timestamp, setTimestamp] = useState(new Date())
 
   useEffect(() => {
-    // Simulate live PPG waveform with more realistic variation
+    // Simulate live PPG waveform with more realistic cardiac cycle
+    let phase = 0
     const interval = setInterval(() => {
       setPpgData((prev) => {
-        const baseWave = Math.sin(Date.now() / 200) * 50 + 50
-        const noise = (Math.random() - 0.5) * 5
-        const newData = [...prev, baseWave + noise]
+        // Create realistic PPG pulse waveform
+        phase += 0.1
+        
+        // Main pulse wave (systolic peak)
+        const mainPulse = Math.pow(Math.sin(phase), 3) * 35 + 35
+        
+        // Dicrotic notch (secondary peak)
+        const dicroticNotch = Math.sin(phase * 2 + Math.PI) * 8
+        
+        // Add some realistic noise and drift
+        const noise = (Math.random() - 0.5) * 2
+        const drift = Math.sin(phase / 10) * 3
+        
+        const waveValue = Math.max(10, Math.min(90, mainPulse + dicroticNotch + noise + drift))
+        
+        const newData = [...prev, waveValue]
         return newData.slice(-100)
       })
 
@@ -156,25 +170,90 @@ export default function LiveMonitoringPage() {
             </div>
           </CardHeader>
           <CardContent>
-            <div className="bg-secondary/30 rounded-lg p-4 h-64 relative overflow-hidden border border-secondary">
-              <svg width="100%" height="100%" className="absolute inset-0">
+            <div className="bg-slate-900 rounded-lg p-4 h-64 relative overflow-hidden border-2 border-primary/20">
+              {/* Grid background for oscilloscope effect */}
+              <div className="absolute inset-0">
+                {[...Array(8)].map((_, i) => (
+                  <div
+                    key={`h-${i}`}
+                    className="absolute w-full border-t border-primary/10"
+                    style={{ top: `${(i / 7) * 100}%` }}
+                  />
+                ))}
+                {[...Array(10)].map((_, i) => (
+                  <div
+                    key={`v-${i}`}
+                    className="absolute h-full border-l border-primary/10"
+                    style={{ left: `${(i / 9) * 100}%` }}
+                  />
+                ))}
+              </div>
+
+              {/* Center reference line */}
+              <div className="absolute inset-0 flex items-center">
+                <div className="w-full border-t-2 border-primary/20" />
+              </div>
+
+              {/* PPG Waveform */}
+              <svg 
+                viewBox="0 0 100 100" 
+                preserveAspectRatio="none"
+                className="absolute inset-0 w-full h-full"
+              >
                 <defs>
                   <linearGradient id="waveGradient" x1="0%" y1="0%" x2="0%" y2="100%">
-                    <stop offset="0%" stopColor="hsl(var(--primary))" stopOpacity="0.6" />
-                    <stop offset="100%" stopColor="hsl(var(--primary))" stopOpacity="0.1" />
+                    <stop offset="0%" stopColor="#22c55e" stopOpacity="0.8" />
+                    <stop offset="100%" stopColor="#22c55e" stopOpacity="0.2" />
                   </linearGradient>
+                  <filter id="glow">
+                    <feGaussianBlur stdDeviation="0.5" result="coloredBlur"/>
+                    <feMerge>
+                      <feMergeNode in="coloredBlur"/>
+                      <feMergeNode in="SourceGraphic"/>
+                    </feMerge>
+                  </filter>
                 </defs>
+                
+                {/* Filled area under the waveform */}
+                <polygon
+                  fill="url(#waveGradient)"
+                  points={
+                    `0,100 ` +
+                    ppgData.map((value, index) => 
+                      `${(index / (ppgData.length - 1)) * 100},${100 - value}`
+                    ).join(" ") +
+                    ` 100,100`
+                  }
+                />
+                
+                {/* Waveform line */}
                 <polyline
                   fill="none"
-                  stroke="hsl(var(--primary))"
-                  strokeWidth="2.5"
+                  stroke="#22c55e"
+                  strokeWidth="0.8"
                   strokeLinecap="round"
                   strokeLinejoin="round"
-                  points={ppgData.map((value, index) => `${(index / ppgData.length) * 100}%,${100 - value}%`).join(" ")}
+                  filter="url(#glow)"
+                  points={ppgData.map((value, index) => 
+                    `${(index / (ppgData.length - 1)) * 100},${100 - value}`
+                  ).join(" ")}
                 />
               </svg>
-              <div className="absolute bottom-2 right-2 bg-background/80 backdrop-blur-sm px-2 py-1 rounded text-xs text-muted-foreground">
-                {Math.round(heartRate)} BPM
+
+              {/* Signal quality indicator */}
+              <div className="absolute top-2 left-2 flex items-center gap-2 bg-slate-800/80 backdrop-blur-sm px-2 py-1 rounded text-xs">
+                <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+                <span className="text-green-400 font-medium">Live Signal</span>
+              </div>
+
+              {/* Heart rate display */}
+              <div className="absolute bottom-2 right-2 bg-slate-800/80 backdrop-blur-sm px-3 py-1.5 rounded text-sm">
+                <span className="text-green-400 font-bold">{Math.round(heartRate)} BPM</span>
+              </div>
+
+              {/* Axis labels */}
+              <div className="absolute bottom-2 left-2 text-xs text-slate-400">
+                Time →
               </div>
             </div>
           </CardContent>

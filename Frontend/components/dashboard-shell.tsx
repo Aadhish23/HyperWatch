@@ -51,7 +51,7 @@ export function DashboardShell({ children, title, description }: DashboardShellP
             </div>
             {sidebarOpen && (
               <div>
-                <h1 className="text-lg font-bold text-gray-900">HyperWatch</h1>
+                <h1 className="text-lg font-bold text-gray-900">HemoSense AI</h1>
                 <p className="text-xs text-gray-500">{roleName}</p>
               </div>
             )}

@@ -12,54 +12,60 @@ const patients = [
     id: 1,
     name: "Sarah Johnson",
     age: 34,
-    avgBP: "120/80",
-    risk: "low",
-    alerts: 0,
+    avgBP: "135/84",
+    heartRate: 82,
+    risk: "medium",
+    alerts: 2,
     lastReading: "5 min ago",
   },
   {
     id: 2,
     name: "Michael Chen",
     age: 62,
-    avgBP: "142/93",
+    avgBP: "165/105",
+    heartRate: 95,
     risk: "high",
-    alerts: 5,
+    alerts: 6,
     lastReading: "15 min ago",
   },
   {
     id: 3,
     name: "Emma Rodriguez",
     age: 45,
-    avgBP: "118/76",
+    avgBP: "122/78",
+    heartRate: 70,
     risk: "low",
-    alerts: 0,
+    alerts: 1,
     lastReading: "1 hour ago",
   },
   {
     id: 4,
     name: "Robert Williams",
     age: 58,
-    avgBP: "135/87",
+    avgBP: "148/92",
+    heartRate: 84,
     risk: "medium",
-    alerts: 2,
+    alerts: 3,
     lastReading: "2 hours ago",
   },
   {
     id: 5,
     name: "Lisa Anderson",
     age: 51,
-    avgBP: "115/75",
+    avgBP: "125/78",
+    heartRate: 75,
     risk: "low",
-    alerts: 0,
+    alerts: 1,
     lastReading: "30 min ago",
   },
   {
     id: 6,
     name: "David Thompson",
     age: 68,
-    avgBP: "148/96",
+    avgBP: "172/110",
+    heartRate: 98,
     risk: "high",
-    alerts: 7,
+    alerts: 8,
     lastReading: "45 min ago",
   },
 ]
@@ -163,7 +169,7 @@ export default function ClinicianDashboard() {
                         <User className="w-6 h-6 text-primary" />
                       </div>
 
-                      <div className="flex-1 grid md:grid-cols-5 gap-4 items-center">
+                      <div className="flex-1 grid md:grid-cols-6 gap-4 items-center">
                         <div>
                           <h3 className="font-semibold">{patient.name}</h3>
                           <p className="text-sm text-muted-foreground">{patient.age} years old</p>
@@ -172,6 +178,11 @@ export default function ClinicianDashboard() {
                         <div>
                           <p className="text-sm text-muted-foreground mb-1">Avg BP (7d)</p>
                           <p className="font-semibold">{patient.avgBP} mmHg</p>
+                        </div>
+
+                        <div>
+                          <p className="text-sm text-muted-foreground mb-1">Heart Rate</p>
+                          <p className="font-semibold">{patient.heartRate} bpm</p>
                         </div>
 
                         <div>

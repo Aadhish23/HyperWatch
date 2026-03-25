@@ -1,5 +1,5 @@
 /**
- * Role-based access control utilities for HyperWatch frontend
+ * Role-based access control utilities for HemoSense AI frontend
  * Enforces strict role-based routing and access control
  */
 

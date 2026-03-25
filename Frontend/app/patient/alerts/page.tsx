@@ -1,90 +1,105 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState } from "react"
 import { FixedSidebarLayout } from "@/components/fixed-sidebar-layout"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { AlertCircle, AlertTriangle, Info, Check, X, Filter } from "lucide-react"
-import { apiClient } from "@/lib/api-client"
+import { AlertCircle, AlertTriangle, Info, Check, Filter } from "lucide-react"
 import { useToast } from "@/components/ui/use-toast"
 
+// Mock alerts data with heart rate and BP information
+const mockAlerts = [
+  {
+    _id: "1",
+    alert_type: "critical",
+    title: "Critical High Blood Pressure",
+    message: "BP reading of 165/105 mmHg detected. Heart rate: 95 bpm. Please seek immediate medical attention.",
+    severity: "Critical",
+    created_at: new Date(Date.now() - 15 * 60 * 1000).toISOString(), // 15 min ago
+    vitals: { systolic: 165, diastolic: 105, heartRate: 95 }
+  },
+  {
+    _id: "2",
+    alert_type: "warning",
+    title: "Elevated Blood Pressure",
+    message: "BP reading of 145/92 mmHg detected. Heart rate: 88 bpm. Monitor closely and consider rest.",
+    severity: "High",
+    created_at: new Date(Date.now() - 45 * 60 * 1000).toISOString(), // 45 min ago
+    vitals: { systolic: 145, diastolic: 92, heartRate: 88 }
+  },
+  {
+    _id: "3",
+    alert_type: "warning",
+    title: "Rapid Heart Rate",
+    message: "Heart rate of 105 bpm detected. BP: 138/86 mmHg. Please rest and avoid strenuous activity.",
+    severity: "Medium",
+    created_at: new Date(Date.now() - 90 * 60 * 1000).toISOString(), // 1.5 hours ago
+    vitals: { systolic: 138, diastolic: 86, heartRate: 105 }
+  },
+  {
+    _id: "4",
+    alert_type: "warning",
+    title: "Sustained Elevation",
+    message: "BP above normal range for 3 consecutive hours. Current: 142/90 mmHg, HR: 82 bpm.",
+    severity: "Medium",
+    created_at: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(), // 2 hours ago
+    vitals: { systolic: 142, diastolic: 90, heartRate: 82 }
+  },
+  {
+    _id: "5",
+    alert_type: "info",
+    title: "Calibration Reminder",
+    message: "Device calibration recommended for accurate readings. Last calibration: 7 days ago.",
+    severity: "Low",
+    created_at: new Date(Date.now() - 3 * 60 * 60 * 1000).toISOString(), // 3 hours ago
+  },
+  {
+    _id: "6",
+    alert_type: "info",
+    title: "Medication Reminder",
+    message: "Time to take your blood pressure medication. Last dose: 12 hours ago.",
+    severity: "Low",
+    created_at: new Date(Date.now() - 4 * 60 * 60 * 1000).toISOString(), // 4 hours ago
+  },
+  {
+    _id: "7",
+    alert_type: "critical",
+    title: "Very High Blood Pressure",
+    message: "BP reading of 172/110 mmHg detected. Heart rate: 98 bpm. Seek emergency care immediately!",
+    severity: "Critical",
+    created_at: new Date(Date.now() - 6 * 60 * 60 * 1000).toISOString(), // 6 hours ago
+    vitals: { systolic: 172, diastolic: 110, heartRate: 98 }
+  },
+  {
+    _id: "8",
+    alert_type: "warning",
+    title: "Low Heart Rate",
+    message: "Heart rate of 52 bpm detected. BP: 115/72 mmHg. Monitor for dizzinessOr fatigue.",
+    severity: "Medium",
+    created_at: new Date(Date.now() - 8 * 60 * 60 * 1000).toISOString(), // 8 hours ago
+    vitals: { systolic: 115, diastolic: 72, heartRate: 52 }
+  },
+]
+
 export default function AlertsPage() {
-  const [alerts, setAlerts] = useState<any[]>([])
+  const [alerts, setAlerts] = useState<any[]>(mockAlerts)
   const [filter, setFilter] = useState("all")
-  const [isLoading, setIsLoading] = useState(true)
   const { toast } = useToast()
-
-  // Fetch alerts from backend on mount
-  useEffect(() => {
-    fetchAlerts()
-  }, [])
-
-  const fetchAlerts = async () => {
-    try {
-      setIsLoading(true)
-      // Fetch only unread alerts for better UX
-      const data = await apiClient.getAlerts({ is_read: false, limit: 50 })
-      setAlerts(data)
-    } catch (err) {
-      console.error("Failed to fetch alerts", err)
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: "Failed to load alerts",
-      })
-    } finally {
-      setIsLoading(false)
-    }
-  }
 
   const filteredAlerts = alerts.filter(alert => {
     if (filter === "all") return true
     return alert.alert_type === filter
   })
 
-  const handleMarkAsRead = async (alertId: string) => {
-    try {
-      await apiClient.markAlertAsRead(alertId)
-
-      // 🔥 Re-fetch alerts from backend
-      const updatedAlerts = await apiClient.getAlerts({ is_read: false, limit: 50 })
-      setAlerts(updatedAlerts)
-
-      toast({
-        title: "Alert Acknowledged",
-        description: "Alert marked as read",
-      })
-    } catch (err) {
-      console.error("Failed to mark alert as read", err)
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: "Failed to mark alert as read",
-      })
-    }
-  }
-
-  const handleResolveAlert = async (alertId: string) => {
-    try {
-      await apiClient.resolveAlert(alertId)
-
-      // 🔥 Re-fetch alerts from backend
-      const updatedAlerts = await apiClient.getAlerts({ is_read: false, limit: 50 })
-      setAlerts(updatedAlerts)
-
-      toast({
-        title: "Alert Resolved",
-        description: "Alert has been resolved",
-      })
-    } catch (err) {
-      console.error("Failed to resolve alert", err)
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: "Failed to resolve alert",
-      })
-    }
+  const handleMarkAsRead = (alertId: string) => {
+    // Remove alert from list (mock behavior)
+    setAlerts(alerts.filter(alert => alert._id !== alertId))
+    
+    toast({
+      title: "Alert Acknowledged",
+      description: "Alert marked as read",
+    })
   }
 
   const criticalCount = alerts.filter(a => a.alert_type === "critical").length
@@ -181,11 +196,7 @@ export default function AlertsPage() {
             </div>
           </CardHeader>
           <CardContent>
-            {isLoading ? (
-              <div className="text-center py-8 text-muted-foreground">
-                <p>Loading alerts...</p>
-              </div>
-            ) : filteredAlerts.length === 0 ? (
+            {filteredAlerts.length === 0 ? (
               <div className="text-center py-8 text-muted-foreground">
                 <Info className="w-12 h-12 mx-auto mb-2 opacity-50" />
                 <p>No alerts to display</p>

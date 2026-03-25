@@ -46,10 +46,10 @@ export default function LoginPage() {
       })
 
       // Store the token with the correct key
-      localStorage.setItem("hyperwatch_token", response.access_token)
+      localStorage.setItem("hemosense_token", response.access_token)
       
       // Store user info for convenience
-      localStorage.setItem("hyperwatch_user", JSON.stringify({
+      localStorage.setItem("hemosense_user", JSON.stringify({
         user_id: response.user_id,
         email: response.email,
         full_name: response.full_name,
@@ -91,7 +91,7 @@ export default function LoginPage() {
               <Activity className="w-7 h-7 text-primary-foreground" />
             </div>
             <div>
-              <h1 className="text-3xl font-bold">HyperWatch</h1>
+              <h1 className="text-3xl font-bold">HemoSense AI</h1>
               <p className="text-sm text-muted-foreground">
                 Continuous BP Monitoring
               </p>
@@ -116,7 +116,7 @@ export default function LoginPage() {
               <div className="w-10 h-10 rounded-lg bg-primary flex items-center justify-center">
                 <Activity className="w-6 h-6 text-primary-foreground" />
               </div>
-              <CardTitle className="text-2xl">HyperWatch</CardTitle>
+              <CardTitle className="text-2xl">HemoSense AI</CardTitle>
             </div>
             <CardTitle className="text-2xl">Welcome back</CardTitle>
             <CardDescription>
